@@ -4,17 +4,30 @@ import PortfolioMarquee from '../components/PortfolioMarquee';
 import CoupleShowcase from '../components/CoupleShowcase';
 import LiveGallery from '../components/LiveGallery';
 
+const DecorativeDivider = () => (
+  <div className="decorative-line-fancy my-16"></div>
+);
+
 const GuestView = () => {
   return (
-    <div className="min-h-screen bg-champagne">
+    <div className="min-h-screen bg-[#e8e8e8]">
       <PhotographerHeader />
+      
+      <DecorativeDivider />
+      
       <PortfolioMarquee />
+      
+      <DecorativeDivider />
+      
       <CoupleShowcase />
+      
+      <DecorativeDivider />
+      
       <LiveGallery />
       
-      <footer className="py-12 text-center border-t border-warmgrey mt-20">
-        <p className="text-foreground/60 font-body">
-          © 2024 Wedding Clickz Photography. All rights reserved.
+      <footer className="py-12 text-center border-t-2 border-gold/30 mt-20 bg-white/50">
+        <p className="text-foreground/70 font-body text-sm">
+          © 2026 SteamIt. All rights reserved.
         </p>
       </footer>
     </div>
