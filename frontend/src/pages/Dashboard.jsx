@@ -312,9 +312,32 @@ const Dashboard = ({ user: initialUser }) => {
 
           {/* Uploaded Photos */}
           <div>
-            <h2 className="text-3xl font-heading text-foreground mb-6">
-              Your Uploaded Photos ({photos.length})
-            </h2>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-3xl font-heading text-foreground">
+                Your Uploaded Photos ({photos.length})
+              </h2>
+              <div className="flex gap-2">
+                <Button
+                  variant={selectionMode ? "default" : "outline"}
+                  onClick={() => {
+                    setSelectionMode(!selectionMode);
+                    setSelectedPhotos([]);
+                  }}
+                  className="font-body"
+                >
+                  {selectionMode ? 'Cancel Selection' : 'Select Multiple'}
+                </Button>
+                {selectionMode && selectedPhotos.length > 0 && (
+                  <Button
+                    variant="destructive"
+                    onClick={handleBulkDelete}
+                    className="font-body"
+                  >
+                    Delete Selected ({selectedPhotos.length})
+                  </Button>
+                )}
+              </div>
+            </div>
 
             {photos.length === 0 ? (
               <Card className="p-12 text-center shadow-gold-soft">
@@ -331,20 +354,36 @@ const Dashboard = ({ user: initialUser }) => {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.3 }}
                   >
-                    <Card className="overflow-hidden shadow-gold-soft hover:shadow-xl transition-all group">
+                    <Card className={`overflow-hidden shadow-gold-soft hover:shadow-xl transition-all group ${
+                      selectedPhotos.includes(photo.photo_id) ? 'ring-4 ring-gold' : ''
+                    }`}>
                       <div className="relative">
                         <img
                           src={photo.image_data}
                           alt={photo.filename}
                           className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-500"
                         />
-                        <button
-                          onClick={() => handleDelete(photo.photo_id)}
-                          className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                          data-testid="delete-photo-button"
-                        >
-                          <FiTrash2 />
-                        </button>
+                        {selectionMode ? (
+                          <button
+                            onClick={() => togglePhotoSelection(photo.photo_id)}
+                            className={`absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                              selectedPhotos.includes(photo.photo_id)
+                                ? 'bg-gold text-white'
+                                : 'bg-white/90 text-foreground'
+                            }`}
+                            data-testid="select-photo-checkbox"
+                          >
+                            {selectedPhotos.includes(photo.photo_id) && '\u2713'}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleDelete(photo.photo_id)}
+                            className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                            data-testid="delete-photo-button"
+                          >
+                            <FiTrash2 />
+                          </button>
+                        )}
                       </div>
                       <div className="p-4">
                         <p className="text-sm font-body text-foreground/80">
