@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { FaWhatsapp, FaInstagram, FaYoutube, FaCamera } from 'react-icons/fa';
+import { FaWhatsapp, FaInstagram, FaYoutube, FaCamera, FaEnvelope, FaMapMarkerAlt } from 'react-icons/fa';
 
 const PhotographerHeader = () => {
   const [animate, setAnimate] = useState(false);
@@ -11,10 +11,18 @@ const PhotographerHeader = () => {
 
   return (
     <div className="relative">
-      {/* Live Indicator */}
-      <div className="fixed top-4 right-4 z-50 flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-full shadow-lg" data-testid="live-indicator">
-        <div className="w-3 h-3 bg-white rounded-full flash-animation"></div>
-        <span className="font-body font-medium text-sm">LIVE</span>
+      {/* Enhanced LIVE Indicator - Green & Vibey */}
+      <div className="fixed top-4 right-4 z-50" data-testid="live-indicator">
+        <div className="relative">
+          <div className="absolute inset-0 bg-green-400 rounded-full blur-xl opacity-60 animate-pulse"></div>
+          <div className="relative flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 text-white px-5 py-2.5 rounded-full shadow-2xl border-2 border-green-300">
+            <div className="relative">
+              <div className="w-3 h-3 bg-white rounded-full animate-ping absolute"></div>
+              <div className="w-3 h-3 bg-white rounded-full"></div>
+            </div>
+            <span className="font-body font-bold text-sm tracking-wide">LIVE</span>
+          </div>
+        </div>
       </div>
 
       {/* Rangoli Decoration Background */}
@@ -73,23 +81,21 @@ const PhotographerHeader = () => {
           </p>
         </motion.div>
 
-        {/* Social Links */}
+        {/* Social Links - Ordered: Email, Instagram, YouTube, WhatsApp, Location */}
         <motion.div
-          className="flex justify-center gap-6 text-xl"
+          className="flex flex-wrap justify-center gap-4 text-xl px-4"
           data-testid="contact-social-links"
           initial={{ opacity: 0 }}
           animate={animate ? { opacity: 1 } : {}}
           transition={{ delay: 0.8, duration: 0.8 }}
         >
           <a
-            href="https://wa.me/1234567890"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="mailto:info@weddingclickz.com"
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white shadow-md hover:shadow-xl transition-all transform hover:scale-105"
-            data-testid="whatsapp-link"
+            data-testid="email-link"
           >
-            <FaWhatsapp className="text-2xl" style={{ color: '#25D366' }} />
-            <span className="hidden md:inline font-body text-foreground/80">WhatsApp</span>
+            <FaEnvelope className="text-2xl text-blue-600" />
+            <span className="hidden md:inline font-body text-foreground/80">Email</span>
           </a>
 
           <a
@@ -112,6 +118,28 @@ const PhotographerHeader = () => {
           >
             <FaYoutube className="text-2xl text-red-600" />
             <span className="hidden md:inline font-body text-foreground/80">YouTube</span>
+          </a>
+
+          <a
+            href="https://wa.me/1234567890"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white shadow-md hover:shadow-xl transition-all transform hover:scale-105"
+            data-testid="whatsapp-link"
+          >
+            <FaWhatsapp className="text-2xl" style={{ color: '#25D366' }} />
+            <span className="hidden md:inline font-body text-foreground/80">WhatsApp</span>
+          </a>
+
+          <a
+            href="https://maps.google.com/?q=Bangalore"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white shadow-md hover:shadow-xl transition-all transform hover:scale-105"
+            data-testid="location-link"
+          >
+            <FaMapMarkerAlt className="text-2xl text-orange-600" />
+            <span className="hidden md:inline font-body text-foreground/80">Location</span>
           </a>
         </motion.div>
       </div>

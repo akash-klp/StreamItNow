@@ -1,42 +1,43 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FiX, FiChevronLeft, FiChevronRight, FiDownload } from 'react-icons/fi';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
-// Sample streaming photos with varied aspect ratios
 const samplePhotos = [
-  { url: 'https://images.pexels.com/photos/15841148/pexels-photo-15841148.jpeg?auto=compress&cs=tinysrgb&w=800', alt: 'Couple portrait', aspect: 'tall' },
-  { url: 'https://images.pexels.com/photos/4456473/pexels-photo-4456473.jpeg?auto=compress&cs=tinysrgb&w=800', alt: 'Bride close-up', aspect: 'portrait' },
-  { url: 'https://images.pexels.com/photos/9428788/pexels-photo-9428788.jpeg?auto=compress&cs=tinysrgb&w=800', alt: 'Wedding details', aspect: 'square' },
-  { url: 'https://images.pexels.com/photos/27014711/pexels-photo-27014711.jpeg?auto=compress&cs=tinysrgb&w=800', alt: 'Floral decor', aspect: 'landscape' },
-  { url: 'https://images.pexels.com/photos/7301283/pexels-photo-7301283.jpeg?auto=compress&cs=tinysrgb&w=800', alt: 'Ring ceremony', aspect: 'portrait' },
-  { url: 'https://images.pexels.com/photos/15582310/pexels-photo-15582310.jpeg?auto=compress&cs=tinysrgb&w=800', alt: 'Traditional rituals', aspect: 'tall' },
-  { url: 'https://images.pexels.com/photos/2253870/pexels-photo-2253870.jpeg?auto=compress&cs=tinysrgb&w=800', alt: 'Couple dancing', aspect: 'landscape' },
-  { url: 'https://images.pexels.com/photos/1616403/pexels-photo-1616403.jpeg?auto=compress&cs=tinysrgb&w=800', alt: 'Bridal makeup', aspect: 'portrait' },
-  { url: 'https://images.pexels.com/photos/3014856/pexels-photo-3014856.jpeg?auto=compress&cs=tinysrgb&w=800', alt: 'Wedding venue', aspect: 'landscape' },
-  { url: 'https://images.pexels.com/photos/5778899/pexels-photo-5778899.jpeg?auto=compress&cs=tinysrgb&w=800', alt: 'Ceremony moments', aspect: 'square' },
-  { url: 'https://images.pexels.com/photos/11193337/pexels-photo-11193337.jpeg?auto=compress&cs=tinysrgb&w=800', alt: 'Bride preparation', aspect: 'portrait' },
-  { url: 'https://images.pexels.com/photos/8960464/pexels-photo-8960464.jpeg?auto=compress&cs=tinysrgb&w=800', alt: 'Couple together', aspect: 'tall' },
-  { url: 'https://images.pexels.com/photos/8960462/pexels-photo-8960462.jpeg?auto=compress&cs=tinysrgb&w=800', alt: 'Wedding celebration', aspect: 'landscape' },
-  { url: 'https://images.pexels.com/photos/11100472/pexels-photo-11100472.jpeg?auto=compress&cs=tinysrgb&w=800', alt: 'Traditional attire', aspect: 'portrait' },
-  { url: 'https://images.pexels.com/photos/3014856/pexels-photo-3014856.jpeg?auto=compress&cs=tinysrgb&w=800', alt: 'Decoration details', aspect: 'square' },
-  { url: 'https://images.pexels.com/photos/1616403/pexels-photo-1616403.jpeg?auto=compress&cs=tinysrgb&w=800', alt: 'Bridal jewelry', aspect: 'portrait' },
-  { url: 'https://images.pexels.com/photos/7165802/pexels-photo-7165802.jpeg?auto=compress&cs=tinysrgb&w=800', alt: 'Couple romantic', aspect: 'landscape' },
-  { url: 'https://images.pexels.com/photos/11024130/pexels-photo-11024130.jpeg?auto=compress&cs=tinysrgb&w=800', alt: 'Wedding rings', aspect: 'square' },
-  { url: 'https://images.pexels.com/photos/2253870/pexels-photo-2253870.jpeg?auto=compress&cs=tinysrgb&w=800', alt: 'Reception party', aspect: 'landscape' },
-  { url: 'https://images.pexels.com/photos/8960456/pexels-photo-8960456.jpeg?auto=compress&cs=tinysrgb&w=800', alt: 'Candid moments', aspect: 'tall' },
-  { url: 'https://images.pexels.com/photos/5778899/pexels-photo-5778899.jpeg?auto=compress&cs=tinysrgb&w=800', alt: 'Beautiful couple', aspect: 'portrait' },
-  { url: 'https://images.pexels.com/photos/11193337/pexels-photo-11193337.jpeg?auto=compress&cs=tinysrgb&w=800', alt: 'Traditional ceremony', aspect: 'landscape' },
-  { url: 'https://images.pexels.com/photos/7165802/pexels-photo-7165802.jpeg?auto=compress&cs=tinysrgb&w=800', alt: 'Love moments', aspect: 'square' },
-  { url: 'https://images.pexels.com/photos/11024130/pexels-photo-11024130.jpeg?auto=compress&cs=tinysrgb&w=800', alt: 'Wedding day', aspect: 'portrait' },
-  { url: 'https://images.pexels.com/photos/8960464/pexels-photo-8960464.jpeg?auto=compress&cs=tinysrgb&w=800', alt: 'Special moments', aspect: 'tall' },
+  { url: 'https://images.pexels.com/photos/15841148/pexels-photo-15841148.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Couple portrait' },
+  { url: 'https://images.pexels.com/photos/4456473/pexels-photo-4456473.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Bride close-up' },
+  { url: 'https://images.pexels.com/photos/9428788/pexels-photo-9428788.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Wedding details' },
+  { url: 'https://images.pexels.com/photos/27014711/pexels-photo-27014711.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Floral decor' },
+  { url: 'https://images.pexels.com/photos/7301283/pexels-photo-7301283.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Ring ceremony' },
+  { url: 'https://images.pexels.com/photos/15582310/pexels-photo-15582310.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Traditional rituals' },
+  { url: 'https://images.pexels.com/photos/2253870/pexels-photo-2253870.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Couple dancing' },
+  { url: 'https://images.pexels.com/photos/1616403/pexels-photo-1616403.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Bridal makeup' },
+  { url: 'https://images.pexels.com/photos/3014856/pexels-photo-3014856.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Wedding venue' },
+  { url: 'https://images.pexels.com/photos/5778899/pexels-photo-5778899.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Ceremony moments' },
+  { url: 'https://images.pexels.com/photos/11193337/pexels-photo-11193337.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Bride preparation' },
+  { url: 'https://images.pexels.com/photos/8960464/pexels-photo-8960464.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Couple together' },
+  { url: 'https://images.pexels.com/photos/8960462/pexels-photo-8960462.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Wedding celebration' },
+  { url: 'https://images.pexels.com/photos/11100472/pexels-photo-11100472.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Traditional attire' },
+  { url: 'https://images.pexels.com/photos/1616403/pexels-photo-1616403.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Bridal jewelry' },
+  { url: 'https://images.pexels.com/photos/7165802/pexels-photo-7165802.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Couple romantic' },
+  { url: 'https://images.pexels.com/photos/11024130/pexels-photo-11024130.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Wedding rings' },
+  { url: 'https://images.pexels.com/photos/2253870/pexels-photo-2253870.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Reception party' },
+  { url: 'https://images.pexels.com/photos/8960456/pexels-photo-8960456.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Candid moments' },
+  { url: 'https://images.pexels.com/photos/5778899/pexels-photo-5778899.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Beautiful couple' },
+  { url: 'https://images.pexels.com/photos/11193337/pexels-photo-11193337.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Traditional ceremony' },
+  { url: 'https://images.pexels.com/photos/7165802/pexels-photo-7165802.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Love moments' },
+  { url: 'https://images.pexels.com/photos/11024130/pexels-photo-11024130.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Wedding day' },
+  { url: 'https://images.pexels.com/photos/8960464/pexels-photo-8960464.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Special moments' },
 ];
 
 const LiveGallery = () => {
   const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showSamples, setShowSamples] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const fetchPhotos = async () => {
     try {
@@ -57,13 +58,52 @@ const LiveGallery = () => {
 
   useEffect(() => {
     fetchPhotos();
-
     const interval = setInterval(() => {
       fetchPhotos();
     }, 10000);
-
     return () => clearInterval(interval);
   }, []);
+
+  const displayPhotos = showSamples ? samplePhotos : photos;
+
+  const openLightbox = (index) => {
+    setCurrentImageIndex(index);
+    setLightboxOpen(true);
+  };
+
+  const closeLightbox = () => {
+    setLightboxOpen(false);
+  };
+
+  const goToNext = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % displayPhotos.length);
+  };
+
+  const goToPrev = () => {
+    setCurrentImageIndex((prev) => (prev - 1 + displayPhotos.length) % displayPhotos.length);
+  };
+
+  const downloadImage = () => {
+    const currentPhoto = displayPhotos[currentImageIndex];
+    const imageUrl = showSamples ? currentPhoto.url : currentPhoto.image_data;
+    const link = document.createElement('a');
+    link.href = imageUrl;
+    link.download = showSamples ? `wedding-photo-${currentImageIndex + 1}.jpg` : currentPhoto.filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!lightboxOpen) return;
+      if (e.key === 'Escape') closeLightbox();
+      if (e.key === 'ArrowRight') goToNext();
+      if (e.key === 'ArrowLeft') goToPrev();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [lightboxOpen]);
 
   if (loading) {
     return (
@@ -73,8 +113,6 @@ const LiveGallery = () => {
       </div>
     );
   }
-
-  const displayPhotos = showSamples ? samplePhotos : photos;
 
   if (displayPhotos.length === 0) {
     return (
@@ -87,7 +125,7 @@ const LiveGallery = () => {
   }
 
   return (
-    <div className="py-12 px-4 md:px-12">
+    <div className="py-12 px-4 md:px-8">
       <h3 className="text-4xl font-heading text-center mb-4 text-foreground">
         Live Wedding Gallery
       </h3>
@@ -95,52 +133,120 @@ const LiveGallery = () => {
         {showSamples ? 'Sample Wedding Moments' : 'Real-time Photo Stream'}
       </p>
 
+      {/* Optimized Grid Layout */}
       <div
-        className="columns-1 md:columns-3 lg:columns-4 gap-4 space-y-4"
+        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3"
         data-testid="live-gallery-grid"
       >
-        {displayPhotos.map((photo, index) => {
-          const aspectClass = showSamples
-            ? photo.aspect === 'tall'
-              ? 'h-96'
-              : photo.aspect === 'portrait'
-              ? 'h-80'
-              : photo.aspect === 'square'
-              ? 'h-64'
-              : 'h-56'
-            : 'h-auto';
-
-          return (
-            <motion.div
-              key={showSamples ? index : photo.photo_id}
-              className="break-inside-avoid mb-4"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05, duration: 0.5 }}
-            >
-              <div className="relative group overflow-hidden rounded-lg border-2 border-white shadow-lg hover:shadow-2xl transition-all duration-300">
-                <img
-                  src={showSamples ? photo.url : photo.image_data}
-                  alt={showSamples ? photo.alt : photo.filename}
-                  className={`w-full ${aspectClass} object-cover group-hover:scale-110 transition-transform duration-700`}
-                />
-                {!showSamples && photo.photographer_notes && (
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <p className="text-white text-sm font-body">
-                      {photo.photographer_notes}
-                    </p>
-                  </div>
-                )}
-                {showSamples && (
-                  <div className="absolute top-2 right-2 bg-gold/90 text-white text-xs font-body px-2 py-1 rounded">
-                    Sample
-                  </div>
-                )}
+        {displayPhotos.map((photo, index) => (
+          <motion.div
+            key={showSamples ? index : photo.photo_id}
+            className="relative aspect-square cursor-pointer group overflow-hidden rounded-lg"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: index * 0.03, duration: 0.4 }}
+            onClick={() => openLightbox(index)}
+          >
+            <img
+              src={showSamples ? photo.url : photo.image_data}
+              alt={showSamples ? photo.alt : photo.filename}
+              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <div className="absolute bottom-2 left-2 right-2">
+                <p className="text-white text-xs font-body truncate">
+                  {showSamples ? photo.alt : (photo.photographer_notes || 'Click to view')}
+                </p>
               </div>
-            </motion.div>
-          );
-        })}
+            </div>
+            {showSamples && (
+              <div className="absolute top-2 right-2 bg-gold/90 text-white text-xs font-body px-2 py-1 rounded">
+                Sample
+              </div>
+            )}
+          </motion.div>
+        ))}
       </div>
+
+      {/* Lightbox Modal */}
+      <AnimatePresence>
+        {lightboxOpen && (
+          <motion.div
+            className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={closeLightbox}
+          >
+            {/* Close Button */}
+            <button
+              onClick={closeLightbox}
+              className="absolute top-4 right-4 text-white p-2 hover:bg-white/10 rounded-full transition-colors z-10"
+              data-testid="lightbox-close"
+            >
+              <FiX size={32} />
+            </button>
+
+            {/* Download Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                downloadImage();
+              }}
+              className="absolute top-4 right-20 text-white p-2 hover:bg-white/10 rounded-full transition-colors z-10"
+              data-testid="lightbox-download"
+            >
+              <FiDownload size={28} />
+            </button>
+
+            {/* Previous Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                goToPrev();
+              }}
+              className="absolute left-4 text-white p-3 bg-white/10 hover:bg-white/20 rounded-full transition-colors z-10"
+              data-testid="lightbox-prev"
+            >
+              <FiChevronLeft size={32} />
+            </button>
+
+            {/* Next Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                goToNext();
+              }}
+              className="absolute right-4 text-white p-3 bg-white/10 hover:bg-white/20 rounded-full transition-colors z-10"
+              data-testid="lightbox-next"
+            >
+              <FiChevronRight size={32} />
+            </button>
+
+            {/* Image */}
+            <motion.div
+              className="max-w-[90vw] max-h-[90vh] flex items-center justify-center"
+              onClick={(e) => e.stopPropagation()}
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+            >
+              <img
+                src={showSamples ? displayPhotos[currentImageIndex].url : displayPhotos[currentImageIndex].image_data}
+                alt={showSamples ? displayPhotos[currentImageIndex].alt : displayPhotos[currentImageIndex].filename}
+                className="max-w-full max-h-full object-contain rounded-lg"
+              />
+            </motion.div>
+
+            {/* Image Counter */}
+            <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-white bg-black/50 px-4 py-2 rounded-full">
+              <span className="font-body text-sm">
+                {currentImageIndex + 1} / {displayPhotos.length}
+              </span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
