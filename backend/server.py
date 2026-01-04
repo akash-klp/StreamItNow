@@ -1,72 +1,249 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, UploadFile, File, Header
+from fastapi.responses import JSONResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
-from typing import List
+from pydantic import BaseModel, Field
+from typing import List, Optional
 import uuid
-from datetime import datetime, timezone
-
+from datetime import datetime, timezone, timedelta
+import base64
+import json
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# Create the main app without a prefix
 app = FastAPI()
-
-# Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
+security = HTTPBearer()
 
+class User(BaseModel):
+    user_id: str
+    email: str
+    name: str
+    picture: Optional[str] = None
 
-# Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
+class SessionData(BaseModel):
+    user_id: str
+    session_token: str
+    expires_at: str
+
+class PhotoUploadRequest(BaseModel):
+    filename: str
+    image_data: str
+    wedding_date: str
+    photographer_notes: Optional[str] = None
+
+class PhotoMetadata(BaseModel):
+    photo_id: str
+    filename: str
+    image_url: str
+    upload_timestamp: str
+    wedding_date: str
+    photographer_notes: Optional[str]
+    photographer_id: str
+
+async def get_current_user_from_header(authorization: Optional[str] = Header(None)):
+    """Get current user from Authorization header"""
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    token = authorization.replace("Bearer ", "")
+    
+    session = await db.user_sessions.find_one(
+        {"session_token": token},
+        {"_id": 0}
+    )
+    
+    if not session:
+        raise HTTPException(status_code=401, detail="Invalid session")
+    
+    expires_at = session["expires_at"]
+    if isinstance(expires_at, str):
+        expires_at = datetime.fromisoformat(expires_at)
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    
+    if expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=401, detail="Session expired")
+    
+    user = await db.users.find_one(
+        {"user_id": session["user_id"]},
+        {"_id": 0}
+    )
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return user
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
-
-# Add your routes to the router instead of directly to app
 @api_router.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "Wedding Clickz Photography API"}
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
+@api_router.post("/auth/session")
+async def create_session(session_id: str = Header(..., alias="X-Session-ID")):
+    """Exchange session_id for user data and session_token"""
+    import httpx
     
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
+                headers={"X-Session-ID": session_id}
+            )
+            
+            if response.status_code != 200:
+                raise HTTPException(status_code=401, detail="Invalid session_id")
+            
+            data = response.json()
+            
+            user_id = f"user_{uuid.uuid4().hex[:12]}"
+            existing_user = await db.users.find_one({"email": data["email"]}, {"_id": 0})
+            
+            if existing_user:
+                user_id = existing_user["user_id"]
+                await db.users.update_one(
+                    {"user_id": user_id},
+                    {"$set": {
+                        "name": data["name"],
+                        "picture": data["picture"],
+                        "updated_at": datetime.now(timezone.utc)
+                    }}
+                )
+            else:
+                await db.users.insert_one({
+                    "user_id": user_id,
+                    "email": data["email"],
+                    "name": data["name"],
+                    "picture": data["picture"],
+                    "created_at": datetime.now(timezone.utc)
+                })
+            
+            session_token = data["session_token"]
+            expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+            
+            await db.user_sessions.update_one(
+                {"user_id": user_id},
+                {"$set": {
+                    "session_token": session_token,
+                    "expires_at": expires_at,
+                    "created_at": datetime.now(timezone.utc)
+                }},
+                upsert=True
+            )
+            
+            return {
+                "user": {
+                    "user_id": user_id,
+                    "email": data["email"],
+                    "name": data["name"],
+                    "picture": data["picture"]
+                },
+                "session_token": session_token
+            }
     
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=500, detail=f"Failed to verify session: {str(e)}")
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
-    
-    # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
-    
-    return status_checks
+@api_router.get("/auth/me")
+async def get_current_user(user: dict = Depends(get_current_user_from_header)):
+    """Get current authenticated user"""
+    return user
 
-# Include the router in the main app
+@api_router.post("/auth/logout")
+async def logout(user: dict = Depends(get_current_user_from_header)):
+    """Logout user by deleting session"""
+    await db.user_sessions.delete_many({"user_id": user["user_id"]})
+    return {"message": "Logged out successfully"}
+
+@api_router.post("/photos/upload")
+async def upload_photo(
+    request: PhotoUploadRequest,
+    user: dict = Depends(get_current_user_from_header)
+):
+    """Upload a wedding photo (MOCK: stores base64 in MongoDB)"""
+    try:
+        photo_id = str(uuid.uuid4())
+        
+        photo_doc = {
+            "photo_id": photo_id,
+            "filename": request.filename,
+            "image_data": request.image_data,
+            "wedding_date": request.wedding_date,
+            "photographer_notes": request.photographer_notes,
+            "photographer_id": user["user_id"],
+            "photographer_name": user["name"],
+            "upload_timestamp": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(timezone.utc)
+        }
+        
+        await db.photos.insert_one(photo_doc)
+        
+        return {
+            "photo_id": photo_id,
+            "message": "Photo uploaded successfully"
+        }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+@api_router.get("/photos/list")
+async def list_photos(user: dict = Depends(get_current_user_from_header)):
+    """List all photos uploaded by the photographer"""
+    photos = await db.photos.find(
+        {"photographer_id": user["user_id"]},
+        {"_id": 0, "image_data": 0}
+    ).sort("created_at", -1).to_list(1000)
+    
+    return photos
+
+@api_router.get("/photos/guest")
+async def list_guest_photos():
+    """List all wedding photos for guests (public endpoint)"""
+    photos = await db.photos.find(
+        {},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(1000)
+    
+    return photos
+
+@api_router.get("/photos/{photo_id}")
+async def get_photo(photo_id: str):
+    """Get a specific photo by ID (public endpoint)"""
+    photo = await db.photos.find_one({"photo_id": photo_id}, {"_id": 0})
+    
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    
+    return photo
+
+@api_router.delete("/photos/{photo_id}")
+async def delete_photo(
+    photo_id: str,
+    user: dict = Depends(get_current_user_from_header)
+):
+    """Delete a photo"""
+    photo = await db.photos.find_one({"photo_id": photo_id}, {"_id": 0})
+    
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    
+    if photo["photographer_id"] != user["user_id"]:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this photo")
+    
+    await db.photos.delete_one({"photo_id": photo_id})
+    
+    return {"message": "Photo deleted successfully"}
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -77,7 +254,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
