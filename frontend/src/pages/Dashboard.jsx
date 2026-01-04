@@ -107,6 +107,17 @@ const Dashboard = ({ user: initialUser }) => {
     }
   };
 
+  const [selectedPhotos, setSelectedPhotos] = useState([]);
+  const [selectionMode, setSelectionMode] = useState(false);
+
+  const togglePhotoSelection = (photoId) => {
+    setSelectedPhotos(prev => 
+      prev.includes(photoId) 
+        ? prev.filter(id => id !== photoId)
+        : [...prev, photoId]
+    );
+  };
+
   const handleDelete = async (photoId) => {
     if (!window.confirm('Are you sure you want to delete this photo?')) return;
 
@@ -120,6 +131,33 @@ const Dashboard = ({ user: initialUser }) => {
     } catch (error) {
       console.error('Delete failed:', error);
       toast.error('Failed to delete photo');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedPhotos.length === 0) {
+      toast.error('No photos selected');
+      return;
+    }
+
+    if (!window.confirm(`Delete ${selectedPhotos.length} selected photos?`)) return;
+
+    try {
+      const token = localStorage.getItem('session_token');
+      await Promise.all(
+        selectedPhotos.map(photoId =>
+          axios.delete(`${BACKEND_URL}/api/photos/${photoId}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+        )
+      );
+      toast.success(`${selectedPhotos.length} photos deleted successfully`);
+      setSelectedPhotos([]);
+      setSelectionMode(false);
+      fetchPhotos();
+    } catch (error) {
+      console.error('Bulk delete failed:', error);
+      toast.error('Failed to delete some photos');
     }
   };
 
