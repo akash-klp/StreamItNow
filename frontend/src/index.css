@@ -37,6 +37,12 @@
     @apply bg-[#e8e8e8] text-foreground font-body;
     position: relative;
   }
+  
+  a[href*="emergent"] {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+  }
   body::before {
     content: '';
     position: fixed;
