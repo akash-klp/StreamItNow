@@ -1,0 +1,157 @@
+{
+  "meta": {
+    "project_name": "Wedding Clickz - Luxury Real-time Gallery",
+    "design_persona": "E1: The Anti-AI Designer",
+    "theme_strategy": "Champagne & Velvet (Modern Luxury)",
+    "version": "1.0"
+  },
+  "typography": {
+    "font_family": {
+      "heading": "\"Playfair Display\", serif",
+      "body": "\"Manrope\", sans-serif",
+      "script": "\"Great Vibes\", cursive",
+      "mono": "\"JetBrains Mono\", monospace"
+    },
+    "weights": {
+      "heading": "400 (Regular) and 700 (Bold) - Use Italic often for emphasis",
+      "body": "300 (Light) and 500 (Medium)"
+    },
+    "imports": [
+      "@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&family=Manrope:wght@300;400;500;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap');"
+    ]
+  },
+  "colors": {
+    "palette": {
+      "background": "#FAF9F6",
+      "foreground": "#2C2C2C",
+      "primary": "#D4AF37",
+      "primary_foreground": "#FFFFFF",
+      "secondary": "#F4F1EA",
+      "secondary_foreground": "#4A4A4A",
+      "accent": "#5D001E",
+      "accent_foreground": "#FFFFFF",
+      "muted": "#E5E5E5",
+      "border": "#D1C7B7"
+    },
+    "usage_rules": {
+      "background": "Use #FAF9F6 for the main page background. Avoid pure white.",
+      "gold_accents": "Use #D4AF37 for buttons, borders, and key highlights. Do NOT overuse.",
+      "text": "Use #2C2C2C for body text. Never use pure black.",
+      "gradients": "FORBIDDEN. Use solid colors or subtle noise textures."
+    }
+  },
+  "visual_enhancers": {
+    "texture": "Add a subtle noise texture overlay to the entire body with 3% opacity to kill the digital flatness.",
+    "shadows": {
+      "soft": "0 4px 20px -2px rgba(212, 175, 55, 0.1)",
+      "hard": "4px 4px 0px 0px #2C2C2C"
+    },
+    "borders": "1px solid #D1C7B7 (Warm Grey) for cards. 1px solid #D4AF37 (Gold) for active states."
+  },
+  "layout_strategies": {
+    "spacing": {
+      "container_padding": "p-6 md:p-12 lg:p-24",
+      "section_gap": "gap-16 md:gap-32",
+      "element_gap": "gap-4 md:gap-8"
+    },
+    "grid_system": {
+      "gallery": "Masonry Layout (use CSS columns or react-responsive-masonry). DO NOT use a standard square grid.",
+      "dashboard": "Bento Grid (Asymmetric). See E1 rules."
+    }
+  },
+  "components": {
+    "PhotographerHeader": {
+      "description": "Top section with branding and contact info.",
+      "elements": [
+        {
+          "name": "Brand Name",
+          "style": "text-5xl md:text-7xl font-heading italic text-center mb-8",
+          "animation": "Use a CSS animation to simulate a 'glitch' or 'reveal' effect to mimic a GIF. Text: 'Wedding Clickz Photography'",
+          "data_testid": "photographer-brand-name"
+        },
+        {
+          "name": "Contact Bar",
+          "style": "flex justify-center gap-8 text-xl text-foreground/80",
+          "icons": "Use react-icons (FaWhatsapp, FaInstagram, FaYoutube). WhatsApp icon must be Green (#25D366).",
+          "data_testid": "contact-social-links"
+        }
+      ]
+    },
+    "PortfolioMarquee": {
+      "description": "A continuous scrolling strip of the photographer's best work.",
+      "style": "h-[400px] w-full overflow-hidden relative flex items-center bg-secondary/30",
+      "behavior": "Auto-scroll (Marquee effect). Pause on hover.",
+      "images": "Use the 'portfolio_images' list below.",
+      "data_testid": "portfolio-marquee"
+    },
+    "CoupleShowcase": {
+      "description": "Elegant introduction of the couple.",
+      "style": "text-center py-20",
+      "typography": "Names in 'Great Vibes' (text-6xl md:text-8xl text-accent). 'Weds' in 'Manrope' (uppercase tracking-widest text-sm).",
+      "content": "Prarthana [WEDS] Santosh",
+      "data_testid": "couple-names"
+    },
+    "LiveGallery": {
+      "description": "Real-time grid of uploaded photos.",
+      "style": "columns-1 md:columns-3 gap-4 space-y-4 px-4 md:px-12",
+      "behavior": "Auto-refresh every 10 seconds to fetch new images from S3/Backend.",
+      "empty_state": "Elegant message: 'Capturing moments... Photos appearing soon.'",
+      "data_testid": "live-gallery-grid"
+    },
+    "UploadDashboard": {
+      "description": "Photographer's control center.",
+      "style": "Clean, functional, Shadcn-based. Use 'Card' component for upload zone.",
+      "features": ["Drag & Drop Zone", "Upload Progress Bar", "Recent Uploads List"],
+      "data_testid": "photographer-dashboard"
+    }
+  },
+  "assets": {
+    "portfolio_images": [
+      {
+        "url": "https://images.pexels.com/photos/4456473/pexels-photo-4456473.jpeg",
+        "alt": "Artistic bride portrait"
+      },
+      {
+        "url": "https://images.pexels.com/photos/9428788/pexels-photo-9428788.jpeg",
+        "alt": "Wedding details"
+      },
+      {
+        "url": "https://images.pexels.com/photos/27014711/pexels-photo-27014711.jpeg",
+        "alt": "Floral arrangement"
+      },
+      {
+        "url": "https://images.pexels.com/photos/7301283/pexels-photo-7301283.jpeg",
+        "alt": "Ring details"
+      },
+      {
+        "url": "https://images.pexels.com/photos/15841148/pexels-photo-15841148.jpeg",
+        "alt": "Couple candid moment"
+      },
+      {
+        "url": "https://images.pexels.com/photos/15582310/pexels-photo-15582310.jpeg",
+        "alt": "Ceremony ritual"
+      }
+    ],
+    "couple_images": [
+      {
+        "url": "https://images.pexels.com/photos/15841148/pexels-photo-15841148.jpeg",
+        "alt": "Prarthana & Santosh Main"
+      }
+    ]
+  },
+  "instructions_to_main_agent": [
+    "1. SETUP: Install 'react-icons', 'framer-motion' (for marquee/transitions), and 'clsx' 'tailwind-merge' if missing.",
+    "2. THEME: Update 'tailwind.config.js' to include the custom colors and fonts defined above. Extend the theme, do not overwrite defaults completely.",
+    "3. LAYOUT: Build the 'GuestView' as a single scrolling page. Build 'Dashboard' as a protected route.",
+    "4. ANIMATION: The 'Photographer Name' MUST be animated. Use Framer Motion or CSS keyframes to make it slide up or fade in letter by letter.",
+    "5. REAL-TIME: Implement a 'useInterval' hook in the Gallery component to poll the backend every 10s.",
+    "6. MOCKING: If backend is not ready, mock the 'fetchPhotos' call to return the 'portfolio_images' list so the UI can be verified.",
+    "7. TESTING: Ensure all interactive elements (Upload button, Social links) have the 'data-testid' attributes specified."
+  ],
+  "universal_guidelines": [
+    "Do not use generic gradients.",
+    "Use 2-3x more spacing than usual.",
+    "Every interaction needs a micro-animation.",
+    "Use 'sonner' for toast notifications (e.g., 'New photo arrived!')."
+  ]
+}
