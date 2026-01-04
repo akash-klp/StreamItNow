@@ -6,11 +6,11 @@
 
 @layer base {
   :root {
-    --background: 40 20% 98%;
+    --background: 0 0% 94%;
     --foreground: 0 0% 17%;
-    --card: 40 20% 98%;
+    --card: 0 0% 98%;
     --card-foreground: 0 0% 17%;
-    --popover: 40 20% 98%;
+    --popover: 0 0% 98%;
     --popover-foreground: 0 0% 17%;
     --primary: 45 85% 52%;
     --primary-foreground: 0 0% 100%;
@@ -34,7 +34,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-champagne text-foreground font-body;
+    @apply bg-[#e8e8e8] text-foreground font-body;
     position: relative;
   }
   body::before {
@@ -48,6 +48,78 @@
     opacity: 0.03;
     pointer-events: none;
     z-index: -1;
+  }
+}
+
+@layer utilities {
+  .rangoli-pattern {
+    background-image: radial-gradient(circle at 50% 50%, #D4AF37 1px, transparent 1px),
+                      radial-gradient(circle at 25% 25%, #5D001E 1px, transparent 1px),
+                      radial-gradient(circle at 75% 75%, #D4AF37 1px, transparent 1px);
+    background-size: 30px 30px, 40px 40px, 35px 35px;
+    background-position: 0 0, 15px 15px, 20px 20px;
+  }
+
+  .shine-effect {
+    background: linear-gradient(90deg, 
+      transparent 0%, 
+      rgba(212, 175, 55, 0.4) 45%, 
+      rgba(255, 255, 255, 0.8) 50%, 
+      rgba(212, 175, 55, 0.4) 55%, 
+      transparent 100%);
+    background-size: 200% 100%;
+    animation: shine 3s infinite;
+  }
+
+  @keyframes shine {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  .flash-animation {
+    animation: flash 1.5s infinite;
+  }
+
+  @keyframes flash {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .decorative-line {
+    height: 2px;
+    background: linear-gradient(to right, 
+      transparent, 
+      #D4AF37 20%, 
+      #5D001E 50%, 
+      #D4AF37 80%, 
+      transparent);
+  }
+
+  .decorative-line-fancy {
+    position: relative;
+    height: 40px;
+  }
+
+  .decorative-line-fancy::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(to right, transparent, #D4AF37, #5D001E, #D4AF37, transparent);
+  }
+
+  .decorative-line-fancy::after {
+    content: '✦';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #e8e8e8;
+    padding: 0 20px;
+    color: #D4AF37;
+    font-size: 24px;
   }
 }
 
