@@ -85,6 +85,100 @@ async def get_current_user_from_header(authorization: Optional[str] = Header(Non
     
     return user
 
+@api_router.get("/settings")
+async def get_settings():
+    """Get photographer settings (public endpoint)"""
+    settings = await db.settings.find_one({}, {"_id": 0})
+    
+    if not settings:
+        return {
+            "photography_name": "Wedding Clickz Photography",
+            "email": "info@weddingclickz.com",
+            "instagram_link": "https://instagram.com/weddingclickz",
+            "youtube_link": "https://youtube.com/@weddingclickz",
+            "whatsapp_number": "1234567890",
+            "location_link": "https://maps.google.com/?q=Bangalore",
+            "bride_name": "",
+            "groom_name": ""
+        }
+    
+    return settings
+
+@api_router.post("/settings")
+async def update_settings(
+    settings: dict,
+    user: dict = Depends(get_current_user_from_header)
+):
+    """Update photographer settings"""
+    await db.settings.update_one(
+        {},
+        {"$set": {
+            **settings,
+            "updated_at": datetime.now(timezone.utc),
+            "updated_by": user["user_id"]
+        }},
+        upsert=True
+    )
+    
+    return {"message": "Settings updated successfully"}
+
+@api_router.get("/wall-photos")
+async def get_wall_photos():
+    """Get wall/portfolio photos (public endpoint)"""
+    photos = await db.wall_photos.find(
+        {},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    return photos
+
+@api_router.post("/wall-photos/upload")
+async def upload_wall_photo(
+    request: PhotoUploadRequest,
+    user: dict = Depends(get_current_user_from_header)
+):
+    """Upload a photo to the wall/portfolio"""
+    try:
+        photo_id = str(uuid.uuid4())
+        
+        photo_doc = {
+            "photo_id": photo_id,
+            "filename": request.filename,
+            "image_data": request.image_data,
+            "photographer_id": user["user_id"],
+            "photographer_name": user["name"],
+            "upload_timestamp": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(timezone.utc)
+        }
+        
+        await db.wall_photos.insert_one(photo_doc)
+        
+        return {
+            "photo_id": photo_id,
+            "message": "Wall photo uploaded successfully"
+        }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+@api_router.delete("/wall-photos/{photo_id}")
+async def delete_wall_photo(
+    photo_id: str,
+    user: dict = Depends(get_current_user_from_header)
+):
+    """Delete a wall photo"""
+    photo = await db.wall_photos.find_one({"photo_id": photo_id}, {"_id": 0})
+    
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    
+    if photo["photographer_id"] != user["user_id"]:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this photo")
+    
+    await db.wall_photos.delete_one({"photo_id": photo_id})
+    
+    return {"message": "Wall photo deleted successfully"}
+
 @api_router.get("/")
 async def root():
     return {"message": "Wedding Clickz Photography API"}
