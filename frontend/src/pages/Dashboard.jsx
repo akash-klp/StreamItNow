@@ -83,8 +83,8 @@ const Dashboard = ({ user: initialUser }) => {
   };
 
   const handleUpload = async () => {
-    if (!selectedFile || !weddingDate) {
-      toast.error('Please select a photo and wedding date');
+    if (!selectedFile) {
+      toast.error('Please select a photo');
       return;
     }
 
@@ -101,7 +101,7 @@ const Dashboard = ({ user: initialUser }) => {
           {
             filename: selectedFile.name,
             image_data: base64Data,
-            wedding_date: weddingDate,
+            wedding_date: new Date().toISOString().split('T')[0],
             photographer_notes: notes
           },
           {
@@ -112,7 +112,6 @@ const Dashboard = ({ user: initialUser }) => {
         toast.success('Photo uploaded successfully!');
         setSelectedFile(null);
         setPreviewUrl(null);
-        setWeddingDate('');
         setNotes('');
         fetchPhotos();
       };
@@ -122,6 +121,66 @@ const Dashboard = ({ user: initialUser }) => {
       toast.error('Upload failed. Please try again.');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleWallFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error('File size must be less than 10MB');
+        return;
+      }
+      if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+        toast.error('File must be JPEG, PNG, or WebP');
+        return;
+      }
+
+      setWallSelectedFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setWallPreviewUrl(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleWallUpload = async () => {
+    if (!wallSelectedFile) {
+      toast.error('Please select a photo');
+      return;
+    }
+
+    setUploadingWall(true);
+
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64Data = reader.result;
+
+        const token = localStorage.getItem('session_token');
+        await axios.post(
+          `${BACKEND_URL}/api/wall-photos/upload`,
+          {
+            filename: wallSelectedFile.name,
+            image_data: base64Data
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        );
+
+        toast.success('Wall photo uploaded successfully!');
+        setWallSelectedFile(null);
+        setWallPreviewUrl(null);
+        fetchWallPhotos();
+      };
+      reader.readAsDataURL(wallSelectedFile);
+    } catch (error) {
+      console.error('Upload failed:', error);
+      toast.error('Upload failed. Please try again.');
+    } finally {
+      setUploadingWall(false);
     }
   };
 
