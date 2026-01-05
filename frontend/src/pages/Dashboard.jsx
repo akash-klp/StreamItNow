@@ -2,24 +2,29 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
-import { FiUpload, FiLogOut, FiTrash2 } from 'react-icons/fi';
+import { FiUpload, FiLogOut, FiTrash2, FiSettings, FiImage } from 'react-icons/fi';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { toast } from 'sonner';
+import Settings from '../components/Settings';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 const Dashboard = ({ user: initialUser }) => {
   const navigate = useNavigate();
   const [user, setUser] = useState(initialUser);
+  const [activeTab, setActiveTab] = useState('gallery');
   const [photos, setPhotos] = useState([]);
+  const [wallPhotos, setWallPhotos] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [weddingDate, setWeddingDate] = useState('');
   const [notes, setNotes] = useState('');
+  const [selectedPhotos, setSelectedPhotos] = useState([]);
+  const [selectionMode, setSelectionMode] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -29,6 +34,7 @@ const Dashboard = ({ user: initialUser }) => {
       }
     }
     fetchPhotos();
+    fetchWallPhotos();
   }, [user]);
 
   const fetchPhotos = async () => {
@@ -40,6 +46,16 @@ const Dashboard = ({ user: initialUser }) => {
       setPhotos(response.data);
     } catch (error) {
       console.error('Failed to fetch photos:', error);
+    }
+  };
+
+  const fetchWallPhotos = async () => {
+    try {
+      const token = localStorage.getItem('session_token');
+      const response = await axios.get(`${BACKEND_URL}/api/wall-photos`);
+      setWallPhotos(response.data);
+    } catch (error) {
+      console.error('Failed to fetch wall photos:', error);
     }
   };
 
