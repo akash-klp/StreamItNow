@@ -238,14 +238,55 @@ const Dashboard = ({ user: initialUser }) => {
           transition={{ duration: 0.5 }}
         >
           <h1 className="text-4xl md:text-5xl font-heading italic text-foreground mb-2">
-            Upload Wedding Photos
+            Photographer Dashboard
           </h1>
           <p className="text-foreground/60 font-body mb-8">
-            Share beautiful moments with Prarthana & Santosh
+            Manage your wedding photos and settings
           </p>
 
-          {/* Upload Card */}
-          <Card className="p-8 mb-12 shadow-gold-soft border-warmgrey">
+          {/* Tab Navigation */}
+          <div className="flex space-x-1 mb-8 bg-white/50 p-1 rounded-lg border border-warmgrey">
+            <button
+              onClick={() => setActiveTab('gallery')}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md font-body transition-all ${
+                activeTab === 'gallery'
+                  ? 'bg-gold text-white shadow-md'
+                  : 'text-foreground/70 hover:text-foreground hover:bg-white/50'
+              }`}
+            >
+              <FiImage className="w-4 h-4" />
+              Photo Gallery
+            </button>
+            <button
+              onClick={() => setActiveTab('wall')}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md font-body transition-all ${
+                activeTab === 'wall'
+                  ? 'bg-gold text-white shadow-md'
+                  : 'text-foreground/70 hover:text-foreground hover:bg-white/50'
+              }`}
+            >
+              <FiImage className="w-4 h-4" />
+              Wall Display
+            </button>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md font-body transition-all ${
+                activeTab === 'settings'
+                  ? 'bg-gold text-white shadow-md'
+                  : 'text-foreground/70 hover:text-foreground hover:bg-white/50'
+              }`}
+            >
+              <FiSettings className="w-4 h-4" />
+              Settings
+            </button>
+          </div>
+
+          {/* Tab Content */}
+          {activeTab === 'gallery' && (
+            <>
+              {/* Upload Card */}
+              <Card className="p-8 mb-12 shadow-gold-soft border-warmgrey">
+                <h2 className="text-2xl font-heading text-foreground mb-6">Upload New Photo</h2>
             <div className="space-y-6">
               <div>
                 <Label htmlFor="photo" className="font-body text-foreground mb-2 block">
