@@ -378,20 +378,6 @@ const Dashboard = ({ user: initialUser }) => {
               )}
 
               <div>
-                <Label htmlFor="date" className="font-body text-foreground mb-2 block">
-                  Wedding Date
-                </Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={weddingDate}
-                  onChange={(e) => setWeddingDate(e.target.value)}
-                  disabled={uploading}
-                  data-testid="wedding-date-input"
-                />
-              </div>
-
-              <div>
                 <Label htmlFor="notes" className="font-body text-foreground mb-2 block">
                   Photographer Notes (Optional)
                 </Label>
@@ -407,7 +393,7 @@ const Dashboard = ({ user: initialUser }) => {
 
               <Button
                 onClick={handleUpload}
-                disabled={uploading || !selectedFile || !weddingDate}
+                disabled={uploading || !selectedFile}
                 className="w-full bg-gold hover:bg-gold/90 text-white font-body font-medium py-6 text-lg"
                 data-testid="upload-button"
               >
