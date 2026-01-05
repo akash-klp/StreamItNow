@@ -127,7 +127,7 @@ const LiveGallery = () => {
   return (
     <div className="py-12 px-4 md:px-8">
       <h3 className="text-4xl font-heading text-center mb-4 text-foreground">
-        Live Wedding Gallery
+        Live Gallery
       </h3>
       <p className="text-center text-foreground/60 font-body mb-12">
         {showSamples ? 'Sample Wedding Moments' : 'Real-time Photo Stream'}
