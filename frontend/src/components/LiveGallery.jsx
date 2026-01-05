@@ -133,15 +133,15 @@ const LiveGallery = () => {
         {showSamples ? 'Sample Wedding Moments' : 'Real-time Photo Stream'}
       </p>
 
-      {/* Optimized Grid Layout */}
+      {/* Optimized Grid Layout - Maintains Aspect Ratio */}
       <div
-        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3"
+        className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3"
         data-testid="live-gallery-grid"
       >
         {displayPhotos.map((photo, index) => (
           <motion.div
             key={showSamples ? index : photo.photo_id}
-            className="relative aspect-square cursor-pointer group overflow-hidden rounded-lg"
+            className="relative cursor-pointer group overflow-hidden rounded-lg"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: index * 0.03, duration: 0.4 }}
@@ -150,7 +150,7 @@ const LiveGallery = () => {
             <img
               src={showSamples ? photo.url : photo.image_data}
               alt={showSamples ? photo.alt : photo.filename}
-              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+              className="w-full h-auto object-contain group-hover:scale-110 transition-transform duration-500"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
               <div className="absolute bottom-2 left-2 right-2">
