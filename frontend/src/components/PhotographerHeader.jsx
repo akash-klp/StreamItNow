@@ -55,19 +55,23 @@ const PhotographerHeader = () => {
             className="fixed pointer-events-none z-40"
             style={{
               left: `${flower.x}%`,
-              top: `${flower.y}%`,
+              top: '-50px',
             }}
-            initial={{ scale: 0, opacity: 0, rotate: 0 }}
+            initial={{ opacity: 0, y: -50, rotate: 0 }}
             animate={{ 
-              scale: [0, 1.5, 1], 
-              opacity: [0, 1, 0], 
-              rotate: [0, 180, 360],
-              y: [0, -50, -100]
+              opacity: [0, 1, 1, 0], 
+              y: [0, window.innerHeight + 100],
+              rotate: [0, 360, 720],
+              x: [0, (Math.random() - 0.5) * 100]
             }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 3, ease: 'easeOut' }}
+            transition={{ 
+              duration: flower.duration, 
+              delay: flower.delay,
+              ease: 'easeIn'
+            }}
           >
-            <span className="text-4xl">🌸</span>
+            <span className="text-xl">{flower.emoji}</span>
           </motion.div>
         ))}
       </AnimatePresence>
