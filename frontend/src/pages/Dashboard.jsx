@@ -21,10 +21,12 @@ const Dashboard = ({ user: initialUser }) => {
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
-  const [weddingDate, setWeddingDate] = useState('');
   const [notes, setNotes] = useState('');
+  const [wallSelectedFile, setWallSelectedFile] = useState(null);
+  const [wallPreviewUrl, setWallPreviewUrl] = useState(null);
   const [selectedPhotos, setSelectedPhotos] = useState([]);
   const [selectionMode, setSelectionMode] = useState(false);
+  const [uploadingWall, setUploadingWall] = useState(false);
 
   useEffect(() => {
     if (!user) {
