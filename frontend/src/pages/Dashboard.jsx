@@ -123,9 +123,6 @@ const Dashboard = ({ user: initialUser }) => {
     }
   };
 
-  const [selectedPhotos, setSelectedPhotos] = useState([]);
-  const [selectionMode, setSelectionMode] = useState(false);
-
   const togglePhotoSelection = (photoId) => {
     setSelectedPhotos(prev => 
       prev.includes(photoId) 
