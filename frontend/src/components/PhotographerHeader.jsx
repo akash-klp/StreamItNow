@@ -15,13 +15,16 @@ const PhotographerHeader = () => {
     fetchSettings();
     
     const flowerInterval = setInterval(() => {
-      const newFlowers = Array.from({ length: 5 }, (_, i) => ({
+      const flowerEmojis = ['🌸', '🌺', '🌼', '🌻', '🌷', '🏵️', '💐', '🌹'];
+      const newFlowers = Array.from({ length: 10 }, (_, i) => ({
         id: Date.now() + i,
         x: Math.random() * 100,
-        y: Math.random() * 100,
+        emoji: flowerEmojis[Math.floor(Math.random() * flowerEmojis.length)],
+        delay: Math.random() * 0.5,
+        duration: 3 + Math.random() * 2,
       }));
       setFlowers(newFlowers);
-      setTimeout(() => setFlowers([]), 3000);
+      setTimeout(() => setFlowers([]), 5000);
     }, 8000);
 
     return () => clearInterval(flowerInterval);
