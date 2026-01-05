@@ -455,6 +455,56 @@ const Dashboard = ({ user: initialUser }) => {
               </div>
             )}
           </div>
+          </>
+          )}
+
+          {activeTab === 'wall' && (
+            <div>
+              <h2 className="text-3xl font-heading text-foreground mb-6">
+                Wall Display Photos ({wallPhotos.length})
+              </h2>
+              {wallPhotos.length === 0 ? (
+                <Card className="p-12 text-center shadow-gold-soft">
+                  <p className="text-foreground/60 font-body">
+                    No photos on the wall display yet.
+                  </p>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {wallPhotos.map((photo) => (
+                    <motion.div
+                      key={photo.id}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <Card className="overflow-hidden shadow-gold-soft hover:shadow-xl transition-all group">
+                        <div className="relative">
+                          <img
+                            src={photo.image_url}
+                            alt={photo.filename}
+                            className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                        </div>
+                        <div className="p-4">
+                          <p className="text-sm font-body text-foreground/80">
+                            {new Date(photo.created_at).toLocaleDateString()}
+                          </p>
+                          <p className="text-sm font-body text-foreground/60 mt-1">
+                            {photo.filename}
+                          </p>
+                        </div>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <Settings user={user} />
+          )}
         </motion.div>
       </div>
     </div>
