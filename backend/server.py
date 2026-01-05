@@ -42,6 +42,10 @@ class PhotoUploadRequest(BaseModel):
     wedding_date: str
     photographer_notes: Optional[str] = None
 
+class WallPhotoUploadRequest(BaseModel):
+    filename: str
+    image_data: str
+
 class PhotoMetadata(BaseModel):
     photo_id: str
     filename: str
