@@ -507,20 +507,72 @@ const Dashboard = ({ user: initialUser }) => {
 
           {activeTab === 'wall' && (
             <div>
+              {/* Wall Photo Upload Card */}
+              <Card className="p-8 mb-12 shadow-gold-soft border-warmgrey">
+                <h2 className="text-2xl font-heading text-foreground mb-6">Upload to Wall Display</h2>
+                <div className="space-y-6">
+                  <div>
+                    <Label htmlFor="wall-photo" className="font-body text-foreground mb-2 block">
+                      Select Photo for Wall Display
+                    </Label>
+                    <Input
+                      id="wall-photo"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={handleWallFileChange}
+                      disabled={uploadingWall}
+                      className="cursor-pointer"
+                      data-testid="wall-file-input"
+                    />
+                    <p className="text-sm text-foreground/60 font-body mt-1">
+                      JPEG, PNG, or WebP format. Max 10MB.
+                    </p>
+                  </div>
+
+                  {wallPreviewUrl && (
+                    <div className="rounded-lg overflow-hidden border border-warmgrey">
+                      <img
+                        src={wallPreviewUrl}
+                        alt="Preview"
+                        className="w-full h-64 object-cover"
+                      />
+                    </div>
+                  )}
+
+                  <Button
+                    onClick={handleWallUpload}
+                    disabled={uploadingWall || !wallSelectedFile}
+                    className="w-full bg-gold hover:bg-gold/90 text-white font-body font-medium py-6 text-lg"
+                    data-testid="wall-upload-button"
+                  >
+                    {uploadingWall ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <FiUpload className="mr-2" /> Upload to Wall
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </Card>
+
               <h2 className="text-3xl font-heading text-foreground mb-6">
                 Wall Display Photos ({wallPhotos.length})
               </h2>
               {wallPhotos.length === 0 ? (
                 <Card className="p-12 text-center shadow-gold-soft">
                   <p className="text-foreground/60 font-body">
-                    No photos on the wall display yet.
+                    No photos on the wall display yet. Upload your best showcase photos above!
                   </p>
                 </Card>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {wallPhotos.map((photo) => (
                     <motion.div
-                      key={photo.id}
+                      key={photo.photo_id}
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.3 }}
@@ -528,14 +580,14 @@ const Dashboard = ({ user: initialUser }) => {
                       <Card className="overflow-hidden shadow-gold-soft hover:shadow-xl transition-all group">
                         <div className="relative">
                           <img
-                            src={photo.image_url}
+                            src={photo.image_data}
                             alt={photo.filename}
                             className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-500"
                           />
                         </div>
                         <div className="p-4">
                           <p className="text-sm font-body text-foreground/80">
-                            {new Date(photo.created_at).toLocaleDateString()}
+                            {new Date(photo.upload_timestamp).toLocaleDateString()}
                           </p>
                           <p className="text-sm font-body text-foreground/60 mt-1">
                             {photo.filename}
