@@ -138,7 +138,7 @@ async def get_wall_photos():
 
 @api_router.post("/wall-photos/upload")
 async def upload_wall_photo(
-    request: PhotoUploadRequest,
+    request: WallPhotoUploadRequest,
     user: dict = Depends(get_current_user_from_header)
 ):
     """Upload a photo to the wall/portfolio"""
