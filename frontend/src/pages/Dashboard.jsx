@@ -686,6 +686,105 @@ const Dashboard = ({ user: initialUser }) => {
             </div>
           )}
 
+          {activeTab === 'background' && (
+            <div>
+              {/* Background Image Upload Card */}
+              <Card className="p-8 mb-12 shadow-gold-soft border-warmgrey">
+                <h2 className="text-2xl font-heading text-foreground mb-6">Upload Header Background Images</h2>
+                <p className="text-foreground/60 font-body mb-4">
+                  These images will appear as a slideshow in the header section. Each image shows for 4 seconds with fade transitions.
+                </p>
+                <div className="space-y-6">
+                  <div>
+                    <Label htmlFor="bg-photo" className="font-body text-foreground mb-2 block">
+                      Select Background Image
+                    </Label>
+                    <Input
+                      id="bg-photo"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={handleBgFileChange}
+                      disabled={uploadingBg}
+                      className="cursor-pointer"
+                      data-testid="bg-file-input"
+                    />
+                    <p className="text-sm text-foreground/60 font-body mt-1">
+                      JPEG, PNG, or WebP format. Max 10MB. Landscape orientation recommended.
+                    </p>
+                  </div>
+
+                  {bgPreviewUrl && (
+                    <div className="rounded-lg overflow-hidden border border-warmgrey">
+                      <img
+                        src={bgPreviewUrl}
+                        alt="Preview"
+                        className="w-full h-64 object-cover"
+                      />
+                    </div>
+                  )}
+
+                  <Button
+                    onClick={handleBgUpload}
+                    disabled={uploadingBg || !bgSelectedFile}
+                    className="w-full bg-gold hover:bg-gold/90 text-white font-body font-medium py-6 text-lg"
+                    data-testid="bg-upload-button"
+                  >
+                    {uploadingBg ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <FiUpload className="mr-2" /> Upload Background Image
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </Card>
+
+              <h2 className="text-3xl font-heading text-foreground mb-6">
+                Header Background Images ({backgroundImages.length})
+              </h2>
+              {backgroundImages.length === 0 ? (
+                <Card className="p-12 text-center shadow-gold-soft">
+                  <p className="text-foreground/60 font-body">
+                    No background images yet. Upload images above to create a beautiful header slideshow!
+                  </p>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {backgroundImages.map((image) => (
+                    <motion.div
+                      key={image.photo_id}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <Card className="overflow-hidden shadow-gold-soft hover:shadow-xl transition-all group">
+                        <div className="relative">
+                          <img
+                            src={image.image_data}
+                            alt={image.filename}
+                            className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                        </div>
+                        <div className="p-4">
+                          <p className="text-sm font-body text-foreground/80">
+                            {new Date(image.upload_timestamp).toLocaleDateString()}
+                          </p>
+                          <p className="text-sm font-body text-foreground/60 mt-1">
+                            {image.filename}
+                          </p>
+                        </div>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {activeTab === 'settings' && (
             <Settings user={user} />
           )}
