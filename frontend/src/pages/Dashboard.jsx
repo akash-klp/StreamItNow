@@ -372,15 +372,15 @@ const Dashboard = ({ user: initialUser }) => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <h1 className="text-4xl md:text-5xl font-heading italic text-foreground mb-2">
+          <h1 className="text-4xl md:text-5xl font-heading italic text-white drop-shadow-lg mb-2">
             Photographer Dashboard
           </h1>
-          <p className="text-foreground/60 font-body mb-8">
+          <p className="text-white/90 font-body mb-8 drop-shadow-md">
             Manage your wedding photos and settings
           </p>
 
           {/* Tab Navigation */}
-          <div className="flex space-x-1 mb-8 bg-white/50 p-1 rounded-lg border border-warmgrey">
+          <div className="flex space-x-1 mb-8 glass-panel p-1 rounded-lg">
             <button
               onClick={() => setActiveTab('gallery')}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md font-body transition-all ${
