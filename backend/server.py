@@ -187,6 +187,63 @@ async def delete_wall_photo(
     
     return {"message": "Wall photo deleted successfully"}
 
+@api_router.get("/background-images")
+async def get_background_images():
+    """Get background slideshow images (public endpoint)"""
+    images = await db.background_images.find(
+        {},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    return images
+
+@api_router.post("/background-images/upload")
+async def upload_background_image(
+    request: BackgroundImageUploadRequest,
+    user: dict = Depends(get_current_user_from_header)
+):
+    """Upload a background slideshow image"""
+    try:
+        photo_id = str(uuid.uuid4())
+        
+        image_doc = {
+            "photo_id": photo_id,
+            "filename": request.filename,
+            "image_data": request.image_data,
+            "photographer_id": user["user_id"],
+            "photographer_name": user["name"],
+            "upload_timestamp": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(timezone.utc)
+        }
+        
+        await db.background_images.insert_one(image_doc)
+        
+        return {
+            "photo_id": photo_id,
+            "message": "Background image uploaded successfully"
+        }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+@api_router.delete("/background-images/{photo_id}")
+async def delete_background_image(
+    photo_id: str,
+    user: dict = Depends(get_current_user_from_header)
+):
+    """Delete a background image"""
+    image = await db.background_images.find_one({"photo_id": photo_id}, {"_id": 0})
+    
+    if not image:
+        raise HTTPException(status_code=404, detail="Image not found")
+    
+    if image["photographer_id"] != user["user_id"]:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this image")
+    
+    await db.background_images.delete_one({"photo_id": photo_id})
+    
+    return {"message": "Background image deleted successfully"}
+
 @api_router.get("/")
 async def root():
     return {"message": "Wedding Clickz Photography API"}
