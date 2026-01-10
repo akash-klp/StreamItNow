@@ -36,9 +36,7 @@
   body {
     @apply text-foreground font-body;
     position: relative;
-    background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 25%, #06b6d4 50%, #0ea5e9 75%, #2563eb 100%);
-    background-size: 400% 400%;
-    animation: gradientShift 15s ease infinite;
+    background: #ffffff;
     min-height: 100vh;
   }
   
