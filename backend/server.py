@@ -46,6 +46,10 @@ class WallPhotoUploadRequest(BaseModel):
     filename: str
     image_data: str
 
+class BackgroundImageUploadRequest(BaseModel):
+    filename: str
+    image_data: str
+
 class PhotoMetadata(BaseModel):
     photo_id: str
     filename: str
