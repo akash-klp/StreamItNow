@@ -75,6 +75,8 @@ const PortfolioMarquee = () => {
               <img
                 src={photo.image_data}
                 alt={photo.filename}
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover"
               />
             </motion.div>

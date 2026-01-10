@@ -144,12 +144,14 @@ const LiveGallery = () => {
             className="relative cursor-pointer group overflow-hidden rounded-lg"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: index * 0.03, duration: 0.4 }}
+            transition={{ delay: Math.min(index * 0.03, 0.3), duration: 0.4 }}
             onClick={() => openLightbox(index)}
           >
             <img
               src={showSamples ? photo.url : photo.image_data}
               alt={showSamples ? photo.alt : photo.filename}
+              loading="lazy"
+              decoding="async"
               className="w-full h-auto object-contain group-hover:scale-110 transition-transform duration-500"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
