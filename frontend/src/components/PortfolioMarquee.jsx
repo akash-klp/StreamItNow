@@ -100,9 +100,11 @@ const PortfolioMarquee = () => {
           {wallPhotos.map((photo, index) => (
             <motion.div
               key={photo.photo_id}
-              className="flex-shrink-0 w-64 h-64 rounded-lg overflow-hidden shadow-lg border-2 border-white"
-              whileHover={{ scale: 1.05 }}
-              transition={{ duration: 0.3 }}
+              className="flex-shrink-0 w-64 h-64 rounded-xl overflow-hidden shadow-md"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.1, duration: 0.4 }}
+              whileHover={{ scale: 1.05, y: -5 }}
             >
               <img
                 src={photo.image_data}
