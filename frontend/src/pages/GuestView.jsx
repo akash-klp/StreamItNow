@@ -29,8 +29,8 @@ const GuestView = () => {
         <LiveGallery />
       </div>
       
-      <footer className="py-12 text-center border-t-2 border-white/20 mt-20 glass-header">
-        <p className="text-white/90 font-body text-sm drop-shadow-md">
+      <footer className="py-12 text-center border-t-2 border-warmgrey mt-20 bg-white">
+        <p className="text-foreground/70 font-body text-sm">
           © 2026 SteamIt. All rights reserved.
         </p>
       </footer>
