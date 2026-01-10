@@ -133,10 +133,24 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: #e8e8e8;
+    background: rgba(232, 232, 232, 0.8);
+    backdrop-filter: blur(10px);
     padding: 0 20px;
     color: #D4AF37;
     font-size: 24px;
+  }
+
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+  }
+
+  .glass-header {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(30px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
   }
 }
 
