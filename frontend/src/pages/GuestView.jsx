@@ -10,7 +10,7 @@ const DecorativeDivider = () => (
 
 const GuestView = () => {
   return (
-    <div className="min-h-screen bg-[#e8e8e8]">
+    <div className="min-h-screen bg-transparent">
       <PhotographerHeader />
       
       <DecorativeDivider />
