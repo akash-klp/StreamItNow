@@ -8,27 +8,24 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const PhotographerHeader = () => {
   const [animate, setAnimate] = useState(false);
   const [settings, setSettings] = useState(null);
-  const [flowers, setFlowers] = useState([]);
+  const [backgroundImages, setBackgroundImages] = useState([]);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
     setAnimate(true);
     fetchSettings();
-    
-    const flowerInterval = setInterval(() => {
-      const flowerEmojis = ['🌸', '🌺', '🌼', '🌻', '🌷', '🏵️', '💐', '🌹'];
-      const newFlowers = Array.from({ length: 10 }, (_, i) => ({
-        id: Date.now() + i,
-        x: Math.random() * 100,
-        emoji: flowerEmojis[Math.floor(Math.random() * flowerEmojis.length)],
-        delay: Math.random() * 0.5,
-        duration: 3 + Math.random() * 2,
-      }));
-      setFlowers(newFlowers);
-      setTimeout(() => setFlowers([]), 5000);
-    }, 8000);
-
-    return () => clearInterval(flowerInterval);
+    fetchBackgroundImages();
   }, []);
+
+  useEffect(() => {
+    if (backgroundImages.length === 0) return;
+
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prev) => (prev + 1) % backgroundImages.length);
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [backgroundImages]);
 
   const fetchSettings = async () => {
     try {
@@ -36,6 +33,15 @@ const PhotographerHeader = () => {
       setSettings(response.data);
     } catch (error) {
       console.error('Failed to fetch settings:', error);
+    }
+  };
+
+  const fetchBackgroundImages = async () => {
+    try {
+      const response = await axios.get(`${BACKEND_URL}/api/background-images`);
+      setBackgroundImages(response.data);
+    } catch (error) {
+      console.error('Failed to fetch background images:', error);
     }
   };
 
@@ -47,35 +53,32 @@ const PhotographerHeader = () => {
   const location = settings?.location_link || 'https://maps.google.com/?q=Bangalore';
 
   return (
-    <div className="relative">
-      <AnimatePresence>
-        {flowers.map((flower) => (
-          <motion.div
-            key={flower.id}
-            className="fixed pointer-events-none z-40"
-            style={{
-              left: `${flower.x}%`,
-              top: '-50px',
-            }}
-            initial={{ opacity: 0, y: -50, rotate: 0 }}
-            animate={{ 
-              opacity: [0, 1, 1, 0], 
-              y: [0, window.innerHeight + 100],
-              rotate: [0, 360, 720],
-              x: [0, (Math.random() - 0.5) * 100]
-            }}
-            exit={{ opacity: 0 }}
-            transition={{ 
-              duration: flower.duration, 
-              delay: flower.delay,
-              ease: 'easeIn'
-            }}
-          >
-            <span className="text-xl">{flower.emoji}</span>
-          </motion.div>
-        ))}
-      </AnimatePresence>
+    <div className="relative overflow-hidden">
+      {/* Background Slideshow */}
+      {backgroundImages.length > 0 && (
+        <div className="absolute inset-0 z-0">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentImageIndex}
+              className="absolute inset-0"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1 }}
+            >
+              <img
+                src={backgroundImages[currentImageIndex].image_data}
+                alt="Background"
+                className="w-full h-full object-cover"
+              />
+              {/* Dark overlay for text readability */}
+              <div className="absolute inset-0 bg-black/40"></div>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      )}
 
+      {/* SMILE Indicator */}
       <div className="fixed top-4 right-4 z-50" data-testid="smile-indicator">
         <div className="relative">
           <div className="absolute inset-0 bg-green-400 rounded-full blur-xl opacity-60 animate-pulse"></div>
@@ -89,82 +92,20 @@ const PhotographerHeader = () => {
         </div>
       </div>
 
-      <div className="absolute top-0 left-0 right-0 h-32 rangoli-pattern opacity-10"></div>
-      
-      <div className="absolute top-8 left-8 w-24 h-24 border-t-2 border-l-2 border-gold opacity-30"></div>
-      <div className="absolute top-8 right-8 w-24 h-24 border-t-2 border-r-2 border-gold opacity-30"></div>
+      {/* Decorative Corner Elements */}
+      <div className="absolute top-8 left-8 w-24 h-24 border-t-2 border-l-2 border-gold opacity-30 z-10"></div>
+      <div className="absolute top-8 right-8 w-24 h-24 border-t-2 border-r-2 border-gold opacity-30 z-10"></div>
 
-      <div className="py-12 md:py-20 text-center relative z-10">
-        <motion.div
-          className="mb-6"
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={animate ? { opacity: 1, scale: 1 } : {}}
-          transition={{ duration: 0.8, ease: 'easeOut' }}
-        >
-          <div className="relative inline-block">
-            <div className="w-32 h-32 mx-auto">
-              <svg viewBox="0 0 100 100" className="w-full h-full">
-                <defs>
-                  <linearGradient id="shutterGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" style={{ stopColor: '#D4AF37', stopOpacity: 1 }} />
-                    <stop offset="50%" style={{ stopColor: '#FFD700', stopOpacity: 1 }} />
-                    <stop offset="100%" style={{ stopColor: '#5D001E', stopOpacity: 1 }} />
-                  </linearGradient>
-                  <filter id="glow">
-                    <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-                    <feMerge>
-                      <feMergeNode in="coloredBlur"/>
-                      <feMergeNode in="SourceGraphic"/>
-                    </feMerge>
-                  </filter>
-                </defs>
-                
-                <circle cx="50" cy="50" r="45" fill="url(#shutterGradient)" filter="url(#glow)" />
-                
-                {[0, 45, 90, 135, 180, 225, 270, 315].map((angle, i) => (
-                  <motion.path
-                    key={i}
-                    d={`M 50 50 L ${50 + 35 * Math.cos((angle * Math.PI) / 180)} ${50 + 35 * Math.sin((angle * Math.PI) / 180)} L ${50 + 35 * Math.cos(((angle + 45) * Math.PI) / 180)} ${50 + 35 * Math.sin(((angle + 45) * Math.PI) / 180)} Z`}
-                    fill="white"
-                    opacity="0.9"
-                    animate={{ 
-                      scale: [1, 0.8, 1],
-                      opacity: [0.9, 0.3, 0.9]
-                    }}
-                    transition={{ 
-                      duration: 2, 
-                      repeat: Infinity, 
-                      delay: i * 0.1,
-                      ease: 'easeInOut'
-                    }}
-                  />
-                ))}
-                
-                <circle cx="50" cy="50" r="15" fill="#2C2C2C" />
-              </svg>
-            </div>
-            <motion.div
-              className="absolute inset-0 pointer-events-none"
-              animate={{ 
-                background: [
-                  'radial-gradient(circle at 0% 0%, rgba(255,255,255,0.6) 0%, transparent 50%)',
-                  'radial-gradient(circle at 100% 100%, rgba(255,255,255,0.6) 0%, transparent 50%)',
-                  'radial-gradient(circle at 0% 0%, rgba(255,255,255,0.6) 0%, transparent 50%)'
-                ]
-              }}
-              transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-            />
-          </div>
-        </motion.div>
-
+      <div className="py-16 md:py-24 text-center relative z-10">
+        {/* Brand Name with Shine Effect */}
         <motion.div
           className="relative inline-block"
           initial={{ opacity: 0, y: 30 }}
           animate={animate ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 1, ease: 'easeOut', delay: 0.3 }}
+          transition={{ duration: 1, ease: 'easeOut' }}
         >
           <h1
-            className="text-5xl md:text-7xl font-heading italic text-foreground mb-2 relative"
+            className="text-5xl md:text-7xl font-heading italic text-white mb-2 relative drop-shadow-lg"
             data-testid="photographer-brand-name"
           >
             <span className="relative inline-block">
@@ -174,29 +115,31 @@ const PhotographerHeader = () => {
           </h1>
         </motion.div>
 
+        {/* Tagline/Bio */}
         <motion.div
           className="max-w-2xl mx-auto px-4 mb-8"
           initial={{ opacity: 0 }}
           animate={animate ? { opacity: 1 } : {}}
-          transition={{ delay: 0.6, duration: 0.8 }}
+          transition={{ delay: 0.3, duration: 0.8 }}
         >
-          <p className="text-xl md:text-2xl font-body text-accent mb-3">
+          <p className="text-xl md:text-2xl font-body text-white drop-shadow-md mb-3">
             Wedding Photography In a Artistic Style
           </p>
-          <p className="text-base md:text-lg font-body text-foreground/70">
+          <p className="text-base md:text-lg font-body text-white/90 drop-shadow-md">
             Candid • Cinematic • Story-Driven
           </p>
-          <p className="text-sm md:text-base font-body text-foreground/60 mt-2">
+          <p className="text-sm md:text-base font-body text-white/80 drop-shadow-md mt-2">
             Bangalore | Destination Weddings
           </p>
         </motion.div>
 
+        {/* Social Links */}
         <motion.div
           className="flex flex-wrap justify-center gap-4 text-xl px-4"
           data-testid="contact-social-links"
           initial={{ opacity: 0 }}
           animate={animate ? { opacity: 1 } : {}}
-          transition={{ delay: 0.8, duration: 0.8 }}
+          transition={{ delay: 0.5, duration: 0.8 }}
         >
           <a
             href={`mailto:${email}`}
@@ -253,8 +196,9 @@ const PhotographerHeader = () => {
         </motion.div>
       </div>
 
-      <div className="absolute bottom-8 left-8 w-24 h-24 border-b-2 border-l-2 border-gold opacity-30"></div>
-      <div className="absolute bottom-8 right-8 w-24 h-24 border-b-2 border-r-2 border-gold opacity-30"></div>
+      {/* Bottom Decorative Corners */}
+      <div className="absolute bottom-8 left-8 w-24 h-24 border-b-2 border-l-2 border-gold opacity-30 z-10"></div>
+      <div className="absolute bottom-8 right-8 w-24 h-24 border-b-2 border-r-2 border-gold opacity-30 z-10"></div>
     </div>
   );
 };
