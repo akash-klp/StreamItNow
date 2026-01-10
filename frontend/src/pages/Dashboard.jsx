@@ -329,9 +329,9 @@ const Dashboard = ({ user: initialUser }) => {
   };
 
   return (
-    <div className="min-h-screen bg-champagne" data-testid="photographer-dashboard">
+    <div className="min-h-screen" data-testid="photographer-dashboard">
       {/* Header */}
-      <div className="border-b border-warmgrey bg-white/50 backdrop-blur-sm sticky top-0 z-10">
+      <div className="border-b border-white/20 glass-header sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
             {user?.picture && (
