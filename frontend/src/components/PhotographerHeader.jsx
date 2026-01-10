@@ -39,9 +39,28 @@ const PhotographerHeader = () => {
   const fetchBackgroundImages = async () => {
     try {
       const response = await axios.get(`${BACKEND_URL}/api/background-images`);
-      setBackgroundImages(response.data);
+      if (response.data.length > 0) {
+        setBackgroundImages(response.data);
+      } else {
+        // Default sample backgrounds if none uploaded
+        setBackgroundImages([
+          { photo_id: '1', image_data: 'https://images.pexels.com/photos/2253870/pexels-photo-2253870.jpeg?auto=compress&cs=tinysrgb&w=1920' },
+          { photo_id: '2', image_data: 'https://images.pexels.com/photos/3014856/pexels-photo-3014856.jpeg?auto=compress&cs=tinysrgb&w=1920' },
+          { photo_id: '3', image_data: 'https://images.pexels.com/photos/1616403/pexels-photo-1616403.jpeg?auto=compress&cs=tinysrgb&w=1920' },
+          { photo_id: '4', image_data: 'https://images.pexels.com/photos/15841148/pexels-photo-15841148.jpeg?auto=compress&cs=tinysrgb&w=1920' },
+          { photo_id: '5', image_data: 'https://images.pexels.com/photos/7165802/pexels-photo-7165802.jpeg?auto=compress&cs=tinysrgb&w=1920' }
+        ]);
+      }
     } catch (error) {
       console.error('Failed to fetch background images:', error);
+      // Fallback to sample images
+      setBackgroundImages([
+        { photo_id: '1', image_data: 'https://images.pexels.com/photos/2253870/pexels-photo-2253870.jpeg?auto=compress&cs=tinysrgb&w=1920' },
+        { photo_id: '2', image_data: 'https://images.pexels.com/photos/3014856/pexels-photo-3014856.jpeg?auto=compress&cs=tinysrgb&w=1920' },
+        { photo_id: '3', image_data: 'https://images.pexels.com/photos/1616403/pexels-photo-1616403.jpeg?auto=compress&cs=tinysrgb&w=1920' },
+        { photo_id: '4', image_data: 'https://images.pexels.com/photos/15841148/pexels-photo-15841148.jpeg?auto=compress&cs=tinysrgb&w=1920' },
+        { photo_id: '5', image_data: 'https://images.pexels.com/photos/7165802/pexels-photo-7165802.jpeg?auto=compress&cs=tinysrgb&w=1920' }
+      ]);
     }
   };
 
