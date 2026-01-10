@@ -372,10 +372,10 @@ const Dashboard = ({ user: initialUser }) => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <h1 className="text-4xl md:text-5xl font-heading italic text-white drop-shadow-lg mb-2">
+          <h1 className="text-4xl md:text-5xl font-heading italic text-foreground mb-2">
             Photographer Dashboard
           </h1>
-          <p className="text-white/90 font-body mb-8 drop-shadow-md">
+          <p className="text-foreground/70 font-body mb-8">
             Manage your wedding photos and settings
           </p>
 
