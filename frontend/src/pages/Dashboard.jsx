@@ -41,6 +41,7 @@ const Dashboard = ({ user: initialUser }) => {
     }
     fetchPhotos();
     fetchWallPhotos();
+    fetchBackgroundImages();
   }, [user]);
 
   const fetchPhotos = async () => {
@@ -62,6 +63,15 @@ const Dashboard = ({ user: initialUser }) => {
       setWallPhotos(response.data);
     } catch (error) {
       console.error('Failed to fetch wall photos:', error);
+    }
+  };
+
+  const fetchBackgroundImages = async () => {
+    try {
+      const response = await axios.get(`${BACKEND_URL}/api/background-images`);
+      setBackgroundImages(response.data);
+    } catch (error) {
+      console.error('Failed to fetch background images:', error);
     }
   };
 
