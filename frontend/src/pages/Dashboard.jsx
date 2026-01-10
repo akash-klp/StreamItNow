@@ -404,6 +404,17 @@ const Dashboard = ({ user: initialUser }) => {
               Wall Display
             </button>
             <button
+              onClick={() => setActiveTab('background')}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md font-body transition-all ${
+                activeTab === 'background'
+                  ? 'bg-gold text-white shadow-md'
+                  : 'text-foreground/70 hover:text-foreground hover:bg-white/50'
+              }`}
+            >
+              <FiImage className="w-4 h-4" />
+              Header Backgrounds
+            </button>
+            <button
               onClick={() => setActiveTab('settings')}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md font-body transition-all ${
                 activeTab === 'settings'
