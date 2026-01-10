@@ -18,15 +18,19 @@ const Dashboard = ({ user: initialUser }) => {
   const [activeTab, setActiveTab] = useState('gallery');
   const [photos, setPhotos] = useState([]);
   const [wallPhotos, setWallPhotos] = useState([]);
+  const [backgroundImages, setBackgroundImages] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [notes, setNotes] = useState('');
   const [wallSelectedFile, setWallSelectedFile] = useState(null);
   const [wallPreviewUrl, setWallPreviewUrl] = useState(null);
+  const [bgSelectedFile, setBgSelectedFile] = useState(null);
+  const [bgPreviewUrl, setBgPreviewUrl] = useState(null);
   const [selectedPhotos, setSelectedPhotos] = useState([]);
   const [selectionMode, setSelectionMode] = useState(false);
   const [uploadingWall, setUploadingWall] = useState(false);
+  const [uploadingBg, setUploadingBg] = useState(false);
 
   useEffect(() => {
     if (!user) {
