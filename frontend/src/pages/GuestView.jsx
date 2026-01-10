@@ -25,7 +25,7 @@ const GuestView = () => {
       
       <ElegantDivider />
       
-      <div className="glass-panel mx-4 md:mx-8 my-8 rounded-2xl p-4">
+      <div className="mx-4 md:mx-8 my-8 p-4">
         <PortfolioMarquee />
       </div>
       
@@ -35,11 +35,11 @@ const GuestView = () => {
       
       <ElegantDivider />
       
-      <div className="glass-panel mx-4 md:mx-8 my-8 rounded-2xl p-6">
+      <div className="mx-4 md:mx-8 my-8 p-6">
         <LiveGallery />
       </div>
       
-      <footer className="py-12 text-center border-t-2 border-warmgrey mt-20 bg-white">
+      <footer className="py-12 text-center border-t border-warmgrey/30 mt-20 bg-white">
         <p className="text-foreground/70 font-body text-sm">
           © 2026 SteamIt. All rights reserved.
         </p>
