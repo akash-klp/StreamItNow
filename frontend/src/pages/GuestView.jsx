@@ -10,12 +10,14 @@ const DecorativeDivider = () => (
 
 const GuestView = () => {
   return (
-    <div className="min-h-screen bg-transparent">
+    <div className="min-h-screen">
       <PhotographerHeader />
       
       <DecorativeDivider />
       
-      <PortfolioMarquee />
+      <div className="glass-panel mx-4 md:mx-8 my-8 rounded-2xl p-4">
+        <PortfolioMarquee />
+      </div>
       
       <DecorativeDivider />
       
@@ -23,10 +25,12 @@ const GuestView = () => {
       
       <DecorativeDivider />
       
-      <LiveGallery />
+      <div className="glass-panel mx-4 md:mx-8 my-8 rounded-2xl p-6">
+        <LiveGallery />
+      </div>
       
-      <footer className="py-12 text-center border-t-2 border-gold/30 mt-20 bg-white/50">
-        <p className="text-foreground/70 font-body text-sm">
+      <footer className="py-12 text-center border-t-2 border-white/20 mt-20 glass-header">
+        <p className="text-white/90 font-body text-sm drop-shadow-md">
           © 2026 SteamIt. All rights reserved.
         </p>
       </footer>
