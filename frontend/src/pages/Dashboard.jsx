@@ -342,8 +342,8 @@ const Dashboard = ({ user: initialUser }) => {
               />
             )}
             <div>
-              <h2 className="font-heading text-xl text-foreground">{user?.name}</h2>
-              <p className="text-sm text-foreground/60 font-body">Photographer Dashboard</p>
+              <h2 className="font-heading text-xl text-white drop-shadow-md">{user?.name}</h2>
+              <p className="text-sm text-white/80 font-body drop-shadow-md">Photographer Dashboard</p>
             </div>
           </div>
           <div className="flex gap-4">
