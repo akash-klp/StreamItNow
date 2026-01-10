@@ -8,20 +8,20 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
+    <div className="min-h-screen flex items-center justify-center px-4 bg-white">
       <motion.div
         className="max-w-md w-full text-center glass-panel p-10 rounded-2xl"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
       >
-        <h1 className="text-5xl md:text-6xl font-heading italic text-white drop-shadow-lg mb-4">
+        <h1 className="text-5xl md:text-6xl font-heading italic text-foreground drop-shadow-sm mb-4">
           Wedding Clickz
         </h1>
-        <p className="text-xl font-script text-white drop-shadow-md mb-8">
+        <p className="text-xl font-script text-accent drop-shadow-sm mb-8">
           Photography Dashboard
         </p>
-        <p className="text-white/90 font-body mb-8 drop-shadow-md">
+        <p className="text-foreground/80 font-body mb-8">
           Upload and manage your beautiful wedding moments
         </p>
         
@@ -33,10 +33,10 @@ const Login = () => {
           Sign in with Google
         </button>
 
-        <div className="mt-8 pt-8 border-t border-white/20">
+        <div className="mt-8 pt-8 border-t border-warmgrey">
           <a
             href="/"
-            className="text-white/80 hover:text-white font-body text-sm transition-colors drop-shadow-md"
+            className="text-foreground/60 hover:text-gold font-body text-sm transition-colors"
           >
             ← Back to Guest View
           </a>
