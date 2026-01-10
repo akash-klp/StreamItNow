@@ -329,9 +329,9 @@ const Dashboard = ({ user: initialUser }) => {
   };
 
   return (
-    <div className="min-h-screen" data-testid="photographer-dashboard">
+    <div className="min-h-screen bg-white" data-testid="photographer-dashboard">
       {/* Header */}
-      <div className="border-b border-white/20 glass-header sticky top-0 z-10">
+      <div className="border-b border-warmgrey glass-header sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
             {user?.picture && (
@@ -342,8 +342,8 @@ const Dashboard = ({ user: initialUser }) => {
               />
             )}
             <div>
-              <h2 className="font-heading text-xl text-white drop-shadow-md">{user?.name}</h2>
-              <p className="text-sm text-white/80 font-body drop-shadow-md">Photographer Dashboard</p>
+              <h2 className="font-heading text-xl text-foreground">{user?.name}</h2>
+              <p className="text-sm text-foreground/60 font-body">Photographer Dashboard</p>
             </div>
           </div>
           <div className="flex gap-4">
