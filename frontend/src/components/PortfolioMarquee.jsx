@@ -7,6 +7,8 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const PortfolioMarquee = () => {
   const scrollContainerRef = useRef(null);
   const [wallPhotos, setWallPhotos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchWallPhotos();
@@ -14,10 +16,16 @@ const PortfolioMarquee = () => {
 
   const fetchWallPhotos = async () => {
     try {
+      setLoading(true);
+      setError(null);
       const response = await axios.get(`${BACKEND_URL}/api/wall-photos`);
+      console.log('Wall photos fetched:', response.data.length);
       setWallPhotos(response.data);
     } catch (error) {
       console.error('Failed to fetch wall photos:', error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -31,8 +39,32 @@ const PortfolioMarquee = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="py-8 text-center" data-testid="portfolio-marquee">
+        <h3 className="text-3xl font-heading text-center mb-6 text-foreground">Our Wall</h3>
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gold mx-auto"></div>
+        <p className="text-foreground/60 mt-4">Loading portfolio...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="py-8 text-center" data-testid="portfolio-marquee">
+        <h3 className="text-3xl font-heading text-center mb-6 text-foreground">Our Wall</h3>
+        <p className="text-red-500">Error loading photos: {error}</p>
+      </div>
+    );
+  }
+
   if (wallPhotos.length === 0) {
-    return null;
+    return (
+      <div className="py-8 text-center" data-testid="portfolio-marquee">
+        <h3 className="text-3xl font-heading text-center mb-6 text-foreground">Our Wall</h3>
+        <p className="text-foreground/60">No portfolio photos yet.</p>
+      </div>
+    );
   }
 
   return (

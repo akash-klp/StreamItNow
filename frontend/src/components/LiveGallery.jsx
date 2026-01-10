@@ -41,11 +41,14 @@ const LiveGallery = () => {
 
   const fetchPhotos = async () => {
     try {
+      console.log('Fetching photos from:', `${BACKEND_URL}/api/photos/guest`);
       const response = await axios.get(`${BACKEND_URL}/api/photos/guest`);
+      console.log('Photos fetched:', response.data.length);
       if (response.data.length > 0) {
         setPhotos(response.data);
         setShowSamples(false);
       } else {
+        console.log('No photos found, showing samples');
         setShowSamples(true);
       }
       setLoading(false);
