@@ -225,16 +225,17 @@ const LiveGallery = () => {
 
             {/* Image */}
             <motion.div
-              className="max-w-[90vw] max-h-[90vh] flex items-center justify-center"
+              className="relative"
               onClick={(e) => e.stopPropagation()}
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.9 }}
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.2 }}
             >
               <img
                 src={showSamples ? displayPhotos[currentImageIndex].url : displayPhotos[currentImageIndex].image_data}
                 alt={showSamples ? displayPhotos[currentImageIndex].alt : displayPhotos[currentImageIndex].filename}
-                className="max-w-full max-h-full object-contain rounded-lg"
+                className="max-h-[85vh] max-w-[90vw] w-auto h-auto object-contain rounded-lg shadow-2xl"
               />
             </motion.div>
 
