@@ -95,6 +95,14 @@ Build a real-time website for a photographer with:
 2. ✅ **Section Dividers** - Redesigned with elegant star icon design
 3. ✅ **Performance** - Added lazy loading (`loading="lazy"`, `decoding="async"`)
 
+#### UI Improvements (Today - Jan 10)
+1. ✅ **Removed outer borders** - Gallery and Wall sections no longer have glass panel borders
+2. ✅ **Instagram-style lightbox** - Swipe/drag navigation with smooth slide transitions
+3. ✅ **Progress dots** - Bottom navigation dots like Instagram
+4. ✅ **Square grid layout** - Gallery images use aspect-square for consistent layout
+5. ✅ **Touch/swipe support** - Mobile finger swipe navigation
+6. ✅ **Keyboard navigation** - Arrow keys work in lightbox
+
 #### Test Results
 - Backend: 100% (19/19 tests passed)
 - Frontend: 100% (all features working)
