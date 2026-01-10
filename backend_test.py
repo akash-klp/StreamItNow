@@ -5,7 +5,7 @@ import base64
 from datetime import datetime
 
 class WeddingPhotographyAPITester:
-    def __init__(self, base_url="https://photo-share-live.preview.emergentagent.com"):
+    def __init__(self, base_url="https://imagestreamr.preview.emergentagent.com"):
         self.base_url = base_url
         self.session_token = None
         self.tests_run = 0
