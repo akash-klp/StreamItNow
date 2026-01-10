@@ -198,6 +198,66 @@ const Dashboard = ({ user: initialUser }) => {
     }
   };
 
+  const handleBgFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error('File size must be less than 10MB');
+        return;
+      }
+      if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+        toast.error('File must be JPEG, PNG, or WebP');
+        return;
+      }
+
+      setBgSelectedFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setBgPreviewUrl(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleBgUpload = async () => {
+    if (!bgSelectedFile) {
+      toast.error('Please select a photo');
+      return;
+    }
+
+    setUploadingBg(true);
+
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64Data = reader.result;
+
+        const token = localStorage.getItem('session_token');
+        await axios.post(
+          `${BACKEND_URL}/api/background-images/upload`,
+          {
+            filename: bgSelectedFile.name,
+            image_data: base64Data
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        );
+
+        toast.success('Background image uploaded successfully!');
+        setBgSelectedFile(null);
+        setBgPreviewUrl(null);
+        fetchBackgroundImages();
+      };
+      reader.readAsDataURL(bgSelectedFile);
+    } catch (error) {
+      console.error('Upload failed:', error);
+      toast.error('Upload failed. Please try again.');
+    } finally {
+      setUploadingBg(false);
+    }
+  };
+
   const togglePhotoSelection = (photoId) => {
     setSelectedPhotos(prev => 
       prev.includes(photoId) 
