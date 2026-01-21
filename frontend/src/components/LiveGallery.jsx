@@ -4,22 +4,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiX, FiDownload } from 'react-icons/fi';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-
-const samplePhotos = [
-  { url: 'https://images.pexels.com/photos/15841148/pexels-photo-15841148.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Couple portrait' },
-  { url: 'https://images.pexels.com/photos/4456473/pexels-photo-4456473.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Bride close-up' },
-  { url: 'https://images.pexels.com/photos/9428788/pexels-photo-9428788.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Wedding details' },
-  { url: 'https://images.pexels.com/photos/27014711/pexels-photo-27014711.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Floral decor' },
-  { url: 'https://images.pexels.com/photos/7301283/pexels-photo-7301283.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Ring ceremony' },
-  { url: 'https://images.pexels.com/photos/15582310/pexels-photo-15582310.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Traditional rituals' },
-  { url: 'https://images.pexels.com/photos/2253870/pexels-photo-2253870.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Couple dancing' },
-  { url: 'https://images.pexels.com/photos/1616403/pexels-photo-1616403.jpeg?auto=compress&cs=tinysrgb&w=1200', alt: 'Bridal makeup' },
-];
+const CACHE_KEY = 'wedding_gallery_photos';
 
 const LiveGallery = () => {
   const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showSamples, setShowSamples] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [direction, setDirection] = useState(0);
@@ -28,30 +17,45 @@ const LiveGallery = () => {
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
 
-  const fetchPhotos = async () => {
-    try {
-      const response = await axios.get(`${BACKEND_URL}/api/photos/guest`);
-      if (response.data.length > 0) {
-        setPhotos(response.data);
-        setShowSamples(false);
-      } else {
-        setShowSamples(true);
-      }
-      setLoading(false);
-    } catch (error) {
-      console.error('Failed to fetch photos:', error);
-      setShowSamples(true);
-      setLoading(false);
-    }
-  };
-
+  // Load cached photos on mount
   useEffect(() => {
+    const cachedPhotos = localStorage.getItem(CACHE_KEY);
+    if (cachedPhotos) {
+      try {
+        const parsed = JSON.parse(cachedPhotos);
+        if (parsed && parsed.length > 0) {
+          setPhotos(parsed);
+          setLoading(false);
+        }
+      } catch (e) {
+        console.error('Failed to parse cached gallery photos:', e);
+      }
+    }
     fetchPhotos();
+    
+    // Refresh every 15 seconds
     const interval = setInterval(fetchPhotos, 15000);
     return () => clearInterval(interval);
   }, []);
 
-  const displayPhotos = showSamples ? samplePhotos : photos;
+  const fetchPhotos = async () => {
+    try {
+      const response = await axios.get(`${BACKEND_URL}/api/photos/guest`, {
+        timeout: 30000 // 30 second timeout for slow server wake-up
+      });
+      
+      if (response.data && response.data.length > 0) {
+        setPhotos(response.data);
+        // Cache the photos in localStorage
+        localStorage.setItem(CACHE_KEY, JSON.stringify(response.data));
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error('Failed to fetch photos:', error);
+      // Keep showing cached photos, just stop loading
+      setLoading(false);
+    }
+  };
 
   const openLightbox = (index) => {
     setCurrentImageIndex(index);
@@ -67,12 +71,12 @@ const LiveGallery = () => {
 
   const goToNext = () => {
     setDirection(1);
-    setCurrentImageIndex((prev) => (prev + 1) % displayPhotos.length);
+    setCurrentImageIndex((prev) => (prev + 1) % photos.length);
   };
 
   const goToPrev = () => {
     setDirection(-1);
-    setCurrentImageIndex((prev) => (prev - 1 + displayPhotos.length) % displayPhotos.length);
+    setCurrentImageIndex((prev) => (prev - 1 + photos.length) % photos.length);
   };
 
   // Touch handlers for swipe
@@ -108,11 +112,10 @@ const LiveGallery = () => {
   };
 
   const downloadImage = () => {
-    const currentPhoto = displayPhotos[currentImageIndex];
-    const imageUrl = showSamples ? currentPhoto.url : currentPhoto.image_data;
+    const currentPhoto = photos[currentImageIndex];
     const link = document.createElement('a');
-    link.href = imageUrl;
-    link.download = showSamples ? `wedding-photo-${currentImageIndex + 1}.jpg` : currentPhoto.filename;
+    link.href = currentPhoto.image_data;
+    link.download = currentPhoto.filename;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -127,7 +130,7 @@ const LiveGallery = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [lightboxOpen]);
+  }, [lightboxOpen, photos.length]);
 
   // Slide animation variants
   const slideVariants = {
@@ -145,7 +148,8 @@ const LiveGallery = () => {
     }),
   };
 
-  if (loading) {
+  // Show loading only if we have no cached photos
+  if (loading && photos.length === 0) {
     return (
       <div className="py-20 text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold mx-auto mb-4"></div>
@@ -154,7 +158,7 @@ const LiveGallery = () => {
     );
   }
 
-  if (displayPhotos.length === 0) {
+  if (photos.length === 0) {
     return (
       <div className="py-20 text-center" data-testid="live-gallery-grid">
         <p className="text-2xl font-heading text-foreground/60">
@@ -170,7 +174,7 @@ const LiveGallery = () => {
         Live Gallery
       </h3>
       <p className="text-center text-foreground/60 font-body mb-12">
-        {showSamples ? 'Sample Wedding Moments' : 'Real-time Photo Stream'}
+        Real-time Photo Stream
       </p>
 
       {/* Grid Layout */}
@@ -178,9 +182,9 @@ const LiveGallery = () => {
         className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4"
         data-testid="live-gallery-grid"
       >
-        {displayPhotos.map((photo, index) => (
+        {photos.map((photo, index) => (
           <motion.div
-            key={showSamples ? index : photo.photo_id}
+            key={photo.photo_id}
             className="relative cursor-pointer group overflow-hidden rounded-xl aspect-square bg-gray-100"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -190,25 +194,20 @@ const LiveGallery = () => {
             onClick={() => openLightbox(index)}
           >
             <img
-              src={showSamples ? photo.url : photo.image_data}
-              alt={showSamples ? photo.alt : photo.filename}
+              src={photo.image_data}
+              alt={photo.filename}
               loading="lazy"
               decoding="async"
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            {showSamples && (
-              <div className="absolute top-2 right-2 bg-gold/90 text-white text-xs font-body px-2 py-1 rounded-full">
-                Sample
-              </div>
-            )}
           </motion.div>
         ))}
       </div>
 
       {/* Instagram-style Lightbox Modal */}
       <AnimatePresence>
-        {lightboxOpen && (
+        {lightboxOpen && photos.length > 0 && (
           <motion.div
             className="fixed inset-0 bg-black z-50 flex flex-col"
             initial={{ opacity: 0 }}
@@ -227,7 +226,7 @@ const LiveGallery = () => {
               </button>
               
               <div className="text-white font-body text-sm">
-                {currentImageIndex + 1} / {displayPhotos.length}
+                {currentImageIndex + 1} / {photos.length}
               </div>
               
               <button
@@ -268,8 +267,8 @@ const LiveGallery = () => {
                   className="absolute w-full h-full flex items-center justify-center px-4 cursor-grab active:cursor-grabbing"
                 >
                   <img
-                    src={showSamples ? displayPhotos[currentImageIndex].url : displayPhotos[currentImageIndex].image_data}
-                    alt={showSamples ? displayPhotos[currentImageIndex].alt : displayPhotos[currentImageIndex].filename}
+                    src={photos[currentImageIndex].image_data}
+                    alt={photos[currentImageIndex].filename}
                     className="max-h-[80vh] max-w-full w-auto h-auto object-contain rounded-lg select-none"
                     draggable="false"
                   />
@@ -284,7 +283,7 @@ const LiveGallery = () => {
 
             {/* Progress Dots */}
             <div className="flex justify-center gap-1.5 pb-6 pt-2">
-              {displayPhotos.slice(0, Math.min(displayPhotos.length, 10)).map((_, index) => (
+              {photos.slice(0, Math.min(photos.length, 10)).map((_, index) => (
                 <button
                   key={index}
                   onClick={() => {
@@ -299,8 +298,8 @@ const LiveGallery = () => {
                   aria-label={`Go to image ${index + 1}`}
                 />
               ))}
-              {displayPhotos.length > 10 && (
-                <span className="text-white/40 text-xs ml-2">+{displayPhotos.length - 10}</span>
+              {photos.length > 10 && (
+                <span className="text-white/40 text-xs ml-2">+{photos.length - 10}</span>
               )}
             </div>
           </motion.div>

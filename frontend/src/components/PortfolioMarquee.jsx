@@ -3,28 +3,47 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const CACHE_KEY = 'wedding_wall_photos';
 
 const PortfolioMarquee = () => {
   const scrollContainerRef = useRef(null);
   const [wallPhotos, setWallPhotos] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
+  // Load cached photos on mount
   useEffect(() => {
+    const cachedPhotos = localStorage.getItem(CACHE_KEY);
+    if (cachedPhotos) {
+      try {
+        const parsed = JSON.parse(cachedPhotos);
+        if (parsed && parsed.length > 0) {
+          setWallPhotos(parsed);
+          setLoading(false);
+        }
+      } catch (e) {
+        console.error('Failed to parse cached wall photos:', e);
+      }
+    }
     fetchWallPhotos();
   }, []);
 
   const fetchWallPhotos = async () => {
     try {
-      setLoading(true);
-      setError(null);
-      const response = await axios.get(`${BACKEND_URL}/api/wall-photos`);
-      console.log('Wall photos fetched:', response.data.length);
-      setWallPhotos(response.data);
+      const response = await axios.get(`${BACKEND_URL}/api/wall-photos`, {
+        timeout: 30000 // 30 second timeout for slow server wake-up
+      });
+      
+      if (response.data && response.data.length > 0) {
+        setWallPhotos(response.data);
+        // Cache the photos in localStorage
+        localStorage.setItem(CACHE_KEY, JSON.stringify(response.data));
+      }
+      // Only set loading to false if we don't have cached data
+      setLoading(false);
     } catch (error) {
       console.error('Failed to fetch wall photos:', error);
-      setError(error.message);
-    } finally {
+      // If we have cached photos, keep showing them
+      // Only set loading to false, don't clear existing photos
       setLoading(false);
     }
   };
@@ -39,21 +58,13 @@ const PortfolioMarquee = () => {
     }
   };
 
-  if (loading) {
+  // Show loading only if we have no cached photos
+  if (loading && wallPhotos.length === 0) {
     return (
       <div className="py-8 text-center" data-testid="portfolio-marquee">
         <h3 className="text-3xl font-heading text-center mb-6 text-foreground">Our Wall</h3>
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gold mx-auto"></div>
         <p className="text-foreground/60 mt-4">Loading portfolio...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="py-8 text-center" data-testid="portfolio-marquee">
-        <h3 className="text-3xl font-heading text-center mb-6 text-foreground">Our Wall</h3>
-        <p className="text-red-500">Error loading photos: {error}</p>
       </div>
     );
   }
