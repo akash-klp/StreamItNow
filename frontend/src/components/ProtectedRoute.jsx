@@ -13,7 +13,14 @@ const ProtectedRoute = ({ children }) => {
   const [user, setUser] = useState(location.state?.user || null);
 
   useEffect(() => {
-    if (location.state?.user) return;
+    if (location.state?.user) {
+      // Check if admin should be redirected
+      if (location.state.user.role === 'admin') {
+        setUser(location.state.user);
+        setIsAuthenticated('redirect_admin');
+      }
+      return;
+    }
 
     const checkAuth = async () => {
       try {
@@ -29,8 +36,17 @@ const ProtectedRoute = ({ children }) => {
           }
         });
 
-        setUser(response.data);
-        setIsAuthenticated(true);
+        const userData = response.data;
+        setUser(userData);
+        
+        // Check role and update localStorage with latest data
+        localStorage.setItem('user', JSON.stringify(userData));
+        
+        if (userData.role === 'admin') {
+          setIsAuthenticated('redirect_admin');
+        } else {
+          setIsAuthenticated(true);
+        }
       } catch (error) {
         console.error('Auth check failed:', error);
         setIsAuthenticated(false);
@@ -53,6 +69,11 @@ const ProtectedRoute = ({ children }) => {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Redirect admin to admin dashboard
+  if (isAuthenticated === 'redirect_admin') {
+    return <Navigate to="/admin" replace />;
   }
 
   return React.cloneElement(children, { user });
