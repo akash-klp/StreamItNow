@@ -576,8 +576,8 @@ async def create_session(session_id: str = Header(..., alias="X-Session-ID")):
     import httpx
     
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
+        async with httpx.AsyncClient() as http_client:
+            response = await http_client.get(
                 "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
                 headers={"X-Session-ID": session_id}
             )
@@ -586,12 +586,26 @@ async def create_session(session_id: str = Header(..., alias="X-Session-ID")):
                 raise HTTPException(status_code=401, detail="Invalid session_id")
             
             data = response.json()
+            email = data["email"].lower()
+            
+            # Determine user role
+            is_admin = email == ADMIN_EMAIL.lower()
+            
+            # Check if user is registered photographer (unless admin)
+            if not is_admin:
+                is_registered = await db.registered_photographers.find_one({"email": email})
+                if not is_registered:
+                    raise HTTPException(
+                        status_code=403, 
+                        detail="Access denied. Your email is not registered. Please contact the administrator to get registered."
+                    )
             
             user_id = f"user_{uuid.uuid4().hex[:12]}"
-            existing_user = await db.users.find_one({"email": data["email"]}, {"_id": 0})
+            existing_user = await db.users.find_one({"email": email}, {"_id": 0})
             
             if existing_user:
                 user_id = existing_user["user_id"]
+                # Update user but preserve role and status
                 await db.users.update_one(
                     {"user_id": user_id},
                     {"$set": {
@@ -600,14 +614,26 @@ async def create_session(session_id: str = Header(..., alias="X-Session-ID")):
                         "updated_at": datetime.now(timezone.utc)
                     }}
                 )
+                role = existing_user.get("role", "photographer")
+                status = existing_user.get("status", "pending")
             else:
+                # New user
+                role = "admin" if is_admin else "photographer"
+                status = "active" if is_admin else "pending"
+                
                 await db.users.insert_one({
                     "user_id": user_id,
-                    "email": data["email"],
+                    "email": email,
                     "name": data["name"],
                     "picture": data["picture"],
+                    "role": role,
+                    "status": status,
                     "created_at": datetime.now(timezone.utc)
                 })
+                
+                # If photographer, remove from registered list as they've now signed up
+                if not is_admin:
+                    await db.registered_photographers.delete_one({"email": email})
             
             session_token = data["session_token"]
             expires_at = datetime.now(timezone.utc) + timedelta(days=7)
@@ -622,12 +648,17 @@ async def create_session(session_id: str = Header(..., alias="X-Session-ID")):
                 upsert=True
             )
             
+            # Fetch updated user data
+            user_data = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+            
             return {
                 "user": {
                     "user_id": user_id,
-                    "email": data["email"],
+                    "email": email,
                     "name": data["name"],
-                    "picture": data["picture"]
+                    "picture": data["picture"],
+                    "role": user_data.get("role", role),
+                    "status": user_data.get("status", status)
                 },
                 "session_token": session_token
             }
