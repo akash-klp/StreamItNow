@@ -35,6 +35,99 @@ class WeddingPhotographyAPITester:
             "details": details
         })
 
+    def setup_mock_users(self):
+        """Setup mock users and sessions for testing"""
+        try:
+            # Clear existing test data
+            self.db.users.delete_many({"email": {"$in": ["akashklp07@gmail.com", "photographer@test.com", "unregistered@test.com"]}})
+            self.db.user_sessions.delete_many({})
+            self.db.registered_photographers.delete_many({})
+            
+            # Create admin user
+            admin_user_id = f"user_{uuid.uuid4().hex[:12]}"
+            admin_token = f"admin_token_{uuid.uuid4().hex}"
+            
+            self.db.users.insert_one({
+                "user_id": admin_user_id,
+                "email": "akashklp07@gmail.com",
+                "name": "Admin User",
+                "picture": "https://example.com/admin.jpg",
+                "role": "admin",
+                "status": "active",
+                "created_at": datetime.now(timezone.utc)
+            })
+            
+            self.db.user_sessions.insert_one({
+                "user_id": admin_user_id,
+                "session_token": admin_token,
+                "expires_at": datetime.now(timezone.utc) + timedelta(days=7),
+                "created_at": datetime.now(timezone.utc)
+            })
+            
+            self.admin_token = admin_token
+            
+            # Register photographer email first
+            self.db.registered_photographers.insert_one({
+                "registration_id": str(uuid.uuid4()),
+                "email": "photographer@test.com",
+                "name": "Test Photographer",
+                "registered_by": admin_user_id,
+                "created_at": datetime.now(timezone.utc)
+            })
+            
+            # Create photographer user
+            photographer_user_id = f"user_{uuid.uuid4().hex[:12]}"
+            photographer_token = f"photographer_token_{uuid.uuid4().hex}"
+            
+            self.db.users.insert_one({
+                "user_id": photographer_user_id,
+                "email": "photographer@test.com",
+                "name": "Test Photographer",
+                "picture": "https://example.com/photographer.jpg",
+                "role": "photographer",
+                "status": "active",
+                "created_at": datetime.now(timezone.utc)
+            })
+            
+            self.db.user_sessions.insert_one({
+                "user_id": photographer_user_id,
+                "session_token": photographer_token,
+                "expires_at": datetime.now(timezone.utc) + timedelta(days=7),
+                "created_at": datetime.now(timezone.utc)
+            })
+            
+            self.photographer_token = photographer_token
+            
+            # Create unregistered user (should get 403)
+            unregistered_user_id = f"user_{uuid.uuid4().hex[:12]}"
+            unregistered_token = f"unregistered_token_{uuid.uuid4().hex}"
+            
+            self.db.users.insert_one({
+                "user_id": unregistered_user_id,
+                "email": "unregistered@test.com",
+                "name": "Unregistered User",
+                "picture": "https://example.com/unregistered.jpg",
+                "role": "photographer",
+                "status": "pending",
+                "created_at": datetime.now(timezone.utc)
+            })
+            
+            self.db.user_sessions.insert_one({
+                "user_id": unregistered_user_id,
+                "session_token": unregistered_token,
+                "expires_at": datetime.now(timezone.utc) + timedelta(days=7),
+                "created_at": datetime.now(timezone.utc)
+            })
+            
+            self.unregistered_token = unregistered_token
+            
+            print("✅ Mock users and sessions created successfully")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Failed to setup mock users: {str(e)}")
+            return False
+
     def test_api_root(self):
         """Test API root endpoint"""
         try:
