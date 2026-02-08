@@ -128,7 +128,202 @@ class WeddingPhotographyAPITester:
             print(f"❌ Failed to setup mock users: {str(e)}")
             return False
 
-    def test_api_root(self):
+    def test_admin_stats_unauthenticated(self):
+        """Test admin stats endpoint without authentication"""
+        try:
+            response = requests.get(f"{self.base_url}/api/admin/stats")
+            success = response.status_code == 401
+            details = f"Status: {response.status_code} (Expected 401)"
+            self.log_test("Admin Stats - Unauthenticated", success, details)
+            return success
+        except Exception as e:
+            self.log_test("Admin Stats - Unauthenticated", False, str(e))
+            return False
+
+    def test_admin_stats_with_admin_auth(self):
+        """Test admin stats endpoint with admin authentication"""
+        try:
+            headers = {"Authorization": f"Bearer {self.admin_token}"}
+            response = requests.get(f"{self.base_url}/api/admin/stats", headers=headers)
+            success = response.status_code == 200
+            details = f"Status: {response.status_code}"
+            if success:
+                data = response.json()
+                required_fields = ["total_photographers", "active_photographers", "pending_photographers", 
+                                 "inactive_photographers", "total_photos", "total_events", "active_events", "pending_events"]
+                has_all_fields = all(field in data for field in required_fields)
+                success = has_all_fields
+                details += f", Has all required fields: {has_all_fields}"
+            self.log_test("Admin Stats - With Admin Auth", success, details)
+            return success
+        except Exception as e:
+            self.log_test("Admin Stats - With Admin Auth", False, str(e))
+            return False
+
+    def test_admin_stats_with_photographer_auth(self):
+        """Test admin stats endpoint with photographer authentication (should fail)"""
+        try:
+            headers = {"Authorization": f"Bearer {self.photographer_token}"}
+            response = requests.get(f"{self.base_url}/api/admin/stats", headers=headers)
+            success = response.status_code == 403
+            details = f"Status: {response.status_code} (Expected 403)"
+            self.log_test("Admin Stats - With Photographer Auth", success, details)
+            return success
+        except Exception as e:
+            self.log_test("Admin Stats - With Photographer Auth", False, str(e))
+            return False
+
+    def test_admin_photographers_list(self):
+        """Test admin photographers list endpoint"""
+        try:
+            headers = {"Authorization": f"Bearer {self.admin_token}"}
+            response = requests.get(f"{self.base_url}/api/admin/photographers", headers=headers)
+            success = response.status_code == 200
+            details = f"Status: {response.status_code}"
+            if success:
+                photographers = response.json()
+                details += f", Photographers count: {len(photographers)}"
+                # Check if photographer has required fields
+                if photographers:
+                    photographer = photographers[0]
+                    required_fields = ["user_id", "email", "name", "role", "status", "photo_count", "event_count"]
+                    has_required_fields = all(field in photographer for field in required_fields)
+                    success = has_required_fields
+                    details += f", Has required fields: {has_required_fields}"
+            self.log_test("Admin Photographers List", success, details)
+            return success
+        except Exception as e:
+            self.log_test("Admin Photographers List", False, str(e))
+            return False
+
+    def test_register_photographer_endpoint(self):
+        """Test register photographer endpoint"""
+        try:
+            headers = {"Authorization": f"Bearer {self.admin_token}"}
+            data = {
+                "email": "newphotographer@test.com",
+                "name": "New Photographer"
+            }
+            response = requests.post(f"{self.base_url}/api/admin/photographers/register", 
+                                   json=data, headers=headers)
+            success = response.status_code == 200
+            details = f"Status: {response.status_code}"
+            if success:
+                result = response.json()
+                success = "registration_id" in result and "message" in result
+                details += f", Has registration_id: {'registration_id' in result}"
+            self.log_test("Register Photographer", success, details)
+            return success
+        except Exception as e:
+            self.log_test("Register Photographer", False, str(e))
+            return False
+
+    def test_register_duplicate_photographer(self):
+        """Test registering duplicate photographer email"""
+        try:
+            headers = {"Authorization": f"Bearer {self.admin_token}"}
+            data = {
+                "email": "photographer@test.com",  # Already registered
+                "name": "Duplicate Photographer"
+            }
+            response = requests.post(f"{self.base_url}/api/admin/photographers/register", 
+                                   json=data, headers=headers)
+            success = response.status_code == 400
+            details = f"Status: {response.status_code} (Expected 400 for duplicate)"
+            self.log_test("Register Duplicate Photographer", success, details)
+            return success
+        except Exception as e:
+            self.log_test("Register Duplicate Photographer", False, str(e))
+            return False
+
+    def test_list_registered_photographers(self):
+        """Test list registered photographers endpoint"""
+        try:
+            headers = {"Authorization": f"Bearer {self.admin_token}"}
+            response = requests.get(f"{self.base_url}/api/admin/registered-photographers", headers=headers)
+            success = response.status_code == 200
+            details = f"Status: {response.status_code}"
+            if success:
+                registrations = response.json()
+                details += f", Registrations count: {len(registrations)}"
+            self.log_test("List Registered Photographers", success, details)
+            return success
+        except Exception as e:
+            self.log_test("List Registered Photographers", False, str(e))
+            return False
+
+    def test_update_photographer_status(self):
+        """Test update photographer status endpoint"""
+        try:
+            # First get a photographer ID
+            headers = {"Authorization": f"Bearer {self.admin_token}"}
+            response = requests.get(f"{self.base_url}/api/admin/photographers", headers=headers)
+            if response.status_code != 200:
+                self.log_test("Update Photographer Status", False, "Could not get photographers list")
+                return False
+            
+            photographers = response.json()
+            if not photographers:
+                self.log_test("Update Photographer Status", False, "No photographers found")
+                return False
+            
+            photographer_id = photographers[0]["user_id"]
+            
+            # Update status
+            data = {"status": "inactive"}
+            response = requests.put(f"{self.base_url}/api/admin/photographers/{photographer_id}/status", 
+                                  json=data, headers=headers)
+            success = response.status_code == 200
+            details = f"Status: {response.status_code}"
+            if success:
+                result = response.json()
+                success = "message" in result
+                details += f", Has message: {'message' in result}"
+            self.log_test("Update Photographer Status", success, details)
+            return success
+        except Exception as e:
+            self.log_test("Update Photographer Status", False, str(e))
+            return False
+
+    def test_delete_photographer(self):
+        """Test delete photographer endpoint"""
+        try:
+            # Create a test photographer to delete
+            headers = {"Authorization": f"Bearer {self.admin_token}"}
+            
+            # First register a photographer
+            register_data = {
+                "email": "todelete@test.com",
+                "name": "To Delete Photographer"
+            }
+            requests.post(f"{self.base_url}/api/admin/photographers/register", 
+                         json=register_data, headers=headers)
+            
+            # Create user manually in database for testing deletion
+            test_user_id = f"user_{uuid.uuid4().hex[:12]}"
+            self.db.users.insert_one({
+                "user_id": test_user_id,
+                "email": "todelete@test.com",
+                "name": "To Delete Photographer",
+                "role": "photographer",
+                "status": "pending",
+                "created_at": datetime.now(timezone.utc)
+            })
+            
+            # Now delete the photographer
+            response = requests.delete(f"{self.base_url}/api/admin/photographers/{test_user_id}", 
+                                     headers=headers)
+            success = response.status_code == 200
+            details = f"Status: {response.status_code}"
+            if success:
+                result = response.json()
+                success = "message" in result
+                details += f", Has message: {'message' in result}"
+            self.log_test("Delete Photographer", success, details)
+            return success
+        except Exception as e:
+            self.log_test("Delete Photographer", False, str(e))
+            return False
         """Test API root endpoint"""
         try:
             response = requests.get(f"{self.base_url}/api/")
