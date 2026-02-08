@@ -21,6 +21,9 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
+# Admin email configuration
+ADMIN_EMAIL = "akashklp07@gmail.com"
+
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 security = HTTPBearer()
@@ -30,11 +33,20 @@ class User(BaseModel):
     email: str
     name: str
     picture: Optional[str] = None
+    role: str = "photographer"  # admin, photographer
+    status: str = "pending"  # active, pending, inactive
 
 class SessionData(BaseModel):
     user_id: str
     session_token: str
     expires_at: str
+
+class RegisterPhotographerRequest(BaseModel):
+    email: str
+    name: Optional[str] = None
+
+class UpdatePhotographerStatusRequest(BaseModel):
+    status: str  # active, pending, inactive
 
 class PhotoUploadRequest(BaseModel):
     filename: str
