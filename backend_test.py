@@ -628,10 +628,48 @@ class WeddingPhotographyAPITester:
 
     def run_all_tests(self):
         """Run all backend API tests"""
-        print("🚀 Starting Wedding Photography API Tests")
+        print("🚀 Starting Wedding Photography Multi-Tenant Admin System Tests")
         print(f"📍 Testing endpoint: {self.base_url}")
         print("=" * 60)
 
+        # Setup mock users and sessions
+        if not self.setup_mock_users():
+            print("❌ Failed to setup mock users. Aborting tests.")
+            return 1
+
+        print("\n🔐 Testing Admin Authentication & Authorization")
+        print("-" * 40)
+        
+        # Test admin endpoints without authentication
+        self.test_admin_stats_unauthenticated()
+        
+        # Test admin endpoints with proper admin authentication
+        self.test_admin_stats_with_admin_auth()
+        self.test_admin_photographers_list()
+        self.test_register_photographer_endpoint()
+        self.test_register_duplicate_photographer()
+        self.test_list_registered_photographers()
+        self.test_update_photographer_status()
+        self.test_delete_photographer()
+        
+        # Test admin endpoints with photographer authentication (should fail)
+        self.test_admin_stats_with_photographer_auth()
+        self.test_photographer_cannot_access_admin_events()
+
+        print("\n📅 Testing Event Management System")
+        print("-" * 40)
+        
+        # Test event creation and management
+        self.test_create_event_as_photographer()
+        self.test_create_event_as_admin()
+        self.test_list_events_as_photographer()
+        self.test_admin_list_all_events()
+        self.test_admin_list_pending_events()
+        self.test_admin_approve_event()
+
+        print("\n🌐 Testing Basic API Functionality")
+        print("-" * 40)
+        
         # Test basic connectivity and public endpoints
         self.test_api_root()
         self.test_guest_photos_endpoint()
@@ -652,6 +690,12 @@ class WeddingPhotographyAPITester:
         # Print summary
         print("=" * 60)
         print(f"📊 Test Results: {self.tests_passed}/{self.tests_run} passed")
+        
+        # Cleanup
+        try:
+            self.mongo_client.close()
+        except:
+            pass
         
         if self.tests_passed == self.tests_run:
             print("🎉 All tests passed!")
