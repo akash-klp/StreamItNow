@@ -107,75 +107,93 @@ user_problem_statement: "Multi-tenant admin system - Create admin page with phot
 backend:
   - task: "Admin stats endpoint"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "Implemented GET /api/admin/stats - returns photographer counts and event stats"
+        - working: true
+        - agent: "testing"
+        - comment: "✅ PASSED - Admin stats endpoint working correctly. Returns all required fields (total_photographers, active_photographers, pending_photographers, inactive_photographers, total_photos, total_events, active_events, pending_events). Properly requires admin authentication (401 without auth, 403 for non-admin users)."
 
   - task: "Admin photographers list endpoint"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "Implemented GET /api/admin/photographers - lists all photographers with photo/event counts"
+        - working: true
+        - agent: "testing"
+        - comment: "✅ PASSED - Admin photographers list endpoint working correctly. Returns photographers with all required fields (user_id, email, name, role, status, photo_count, event_count). Properly requires admin authentication."
 
   - task: "Register photographer endpoint"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "Implemented POST /api/admin/photographers/register - pre-registers photographer email"
+        - working: true
+        - agent: "testing"
+        - comment: "✅ PASSED - Register photographer endpoint working correctly. Successfully registers new photographer emails and returns registration_id. Properly handles duplicate registrations with 400 error. Requires admin authentication."
 
   - task: "Update photographer status endpoint"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "Implemented PUT /api/admin/photographers/{user_id}/status - activate/deactivate photographers"
+        - working: true
+        - agent: "testing"
+        - comment: "✅ PASSED - Update photographer status endpoint working correctly. Successfully updates photographer status (active/pending/inactive). Returns success message. Requires admin authentication."
 
   - task: "Event management endpoints"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "Implemented CRUD for events with approval workflow"
+        - working: true
+        - agent: "testing"
+        - comment: "✅ PASSED - Event management endpoints working correctly. Photographers can create events (status=pending), admin can create events (status=active). Admin can list all events, list pending events, and approve/reject events. Proper role-based access control implemented. Event approval workflow functioning as expected."
 
   - task: "Auth session with role-based access"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "Updated auth to check admin email and registered photographers list"
+        - working: true
+        - agent: "testing"
+        - comment: "✅ PASSED - Role-based authentication working correctly. Admin user (akashklp07@gmail.com) has admin role and can access all admin endpoints. Photographers have photographer role and are properly restricted from admin endpoints (403 Forbidden). Authentication properly validates session tokens and returns 401 for invalid/missing tokens."
 
 frontend:
   - task: "Admin Dashboard page"
