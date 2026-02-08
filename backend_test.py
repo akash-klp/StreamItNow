@@ -324,7 +324,145 @@ class WeddingPhotographyAPITester:
         except Exception as e:
             self.log_test("Delete Photographer", False, str(e))
             return False
-        """Test API root endpoint"""
+
+    def test_create_event_as_photographer(self):
+        """Test creating event as photographer (should be pending)"""
+        try:
+            headers = {"Authorization": f"Bearer {self.photographer_token}"}
+            data = {
+                "event_name": "Test Wedding",
+                "bride_name": "Jane Doe",
+                "groom_name": "John Doe",
+                "event_date": "2024-12-25",
+                "venue": "Test Venue",
+                "notes": "Test event creation"
+            }
+            response = requests.post(f"{self.base_url}/api/events", json=data, headers=headers)
+            success = response.status_code == 200
+            details = f"Status: {response.status_code}"
+            if success:
+                result = response.json()
+                success = result.get("status") == "pending" and "event_id" in result
+                details += f", Status: {result.get('status')}, Has event_id: {'event_id' in result}"
+            self.log_test("Create Event as Photographer", success, details)
+            return success, result.get("event_id") if success else None
+        except Exception as e:
+            self.log_test("Create Event as Photographer", False, str(e))
+            return False, None
+
+    def test_create_event_as_admin(self):
+        """Test creating event as admin (should be active)"""
+        try:
+            headers = {"Authorization": f"Bearer {self.admin_token}"}
+            data = {
+                "event_name": "Admin Test Wedding",
+                "bride_name": "Admin Jane",
+                "groom_name": "Admin John",
+                "event_date": "2024-12-26",
+                "venue": "Admin Test Venue",
+                "notes": "Admin event creation"
+            }
+            response = requests.post(f"{self.base_url}/api/events", json=data, headers=headers)
+            success = response.status_code == 200
+            details = f"Status: {response.status_code}"
+            if success:
+                result = response.json()
+                success = result.get("status") == "active" and "event_id" in result
+                details += f", Status: {result.get('status')}, Has event_id: {'event_id' in result}"
+            self.log_test("Create Event as Admin", success, details)
+            return success, result.get("event_id") if success else None
+        except Exception as e:
+            self.log_test("Create Event as Admin", False, str(e))
+            return False, None
+
+    def test_list_events_as_photographer(self):
+        """Test listing events as photographer (should see only own events)"""
+        try:
+            headers = {"Authorization": f"Bearer {self.photographer_token}"}
+            response = requests.get(f"{self.base_url}/api/events", headers=headers)
+            success = response.status_code == 200
+            details = f"Status: {response.status_code}"
+            if success:
+                events = response.json()
+                details += f", Events count: {len(events)}"
+            self.log_test("List Events as Photographer", success, details)
+            return success
+        except Exception as e:
+            self.log_test("List Events as Photographer", False, str(e))
+            return False
+
+    def test_admin_list_all_events(self):
+        """Test admin-only endpoint to list all events"""
+        try:
+            headers = {"Authorization": f"Bearer {self.admin_token}"}
+            response = requests.get(f"{self.base_url}/api/admin/events", headers=headers)
+            success = response.status_code == 200
+            details = f"Status: {response.status_code}"
+            if success:
+                events = response.json()
+                details += f", Events count: {len(events)}"
+            self.log_test("Admin List All Events", success, details)
+            return success
+        except Exception as e:
+            self.log_test("Admin List All Events", False, str(e))
+            return False
+
+    def test_admin_list_pending_events(self):
+        """Test admin-only endpoint to list pending events"""
+        try:
+            headers = {"Authorization": f"Bearer {self.admin_token}"}
+            response = requests.get(f"{self.base_url}/api/admin/events/pending", headers=headers)
+            success = response.status_code == 200
+            details = f"Status: {response.status_code}"
+            if success:
+                events = response.json()
+                details += f", Pending events count: {len(events)}"
+            self.log_test("Admin List Pending Events", success, details)
+            return success
+        except Exception as e:
+            self.log_test("Admin List Pending Events", False, str(e))
+            return False
+
+    def test_admin_approve_event(self):
+        """Test admin approving an event"""
+        try:
+            # First create a pending event
+            success, event_id = self.test_create_event_as_photographer()
+            if not success or not event_id:
+                self.log_test("Admin Approve Event", False, "Could not create test event")
+                return False
+            
+            # Now approve it
+            headers = {"Authorization": f"Bearer {self.admin_token}"}
+            data = {"status": "active"}
+            response = requests.put(f"{self.base_url}/api/admin/events/{event_id}/status", 
+                                  json=data, headers=headers)
+            success = response.status_code == 200
+            details = f"Status: {response.status_code}"
+            if success:
+                result = response.json()
+                success = "message" in result
+                details += f", Has message: {'message' in result}"
+            self.log_test("Admin Approve Event", success, details)
+            return success
+        except Exception as e:
+            self.log_test("Admin Approve Event", False, str(e))
+            return False
+
+    def test_photographer_cannot_access_admin_events(self):
+        """Test that photographer cannot access admin-only event endpoints"""
+        try:
+            headers = {"Authorization": f"Bearer {self.photographer_token}"}
+            response = requests.get(f"{self.base_url}/api/admin/events", headers=headers)
+            success = response.status_code == 403
+            details = f"Status: {response.status_code} (Expected 403)"
+            self.log_test("Photographer Cannot Access Admin Events", success, details)
+            return success
+        except Exception as e:
+            self.log_test("Photographer Cannot Access Admin Events", False, str(e))
+            return False
+
+    def test_api_root(self):
         try:
             response = requests.get(f"{self.base_url}/api/")
             success = response.status_code == 200
