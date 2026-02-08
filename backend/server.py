@@ -105,6 +105,316 @@ async def get_current_user_from_header(authorization: Optional[str] = Header(Non
     
     return user
 
+async def get_admin_user(user: dict = Depends(get_current_user_from_header)):
+    """Verify user is admin"""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return user
+
+async def get_active_photographer(user: dict = Depends(get_current_user_from_header)):
+    """Verify user is an active photographer or admin"""
+    if user.get("role") == "admin":
+        return user
+    if user.get("role") != "photographer":
+        raise HTTPException(status_code=403, detail="Photographer access required")
+    if user.get("status") != "active":
+        raise HTTPException(status_code=403, detail="Your account is pending approval. Please contact admin.")
+    return user
+
+# ==================== ADMIN ENDPOINTS ====================
+
+@api_router.get("/admin/stats")
+async def get_admin_stats(admin: dict = Depends(get_admin_user)):
+    """Get admin dashboard statistics"""
+    total_photographers = await db.users.count_documents({"role": "photographer"})
+    active_photographers = await db.users.count_documents({"role": "photographer", "status": "active"})
+    pending_photographers = await db.users.count_documents({"role": "photographer", "status": "pending"})
+    inactive_photographers = await db.users.count_documents({"role": "photographer", "status": "inactive"})
+    total_photos = await db.photos.count_documents({})
+    total_events = await db.events.count_documents({})
+    active_events = await db.events.count_documents({"status": "active"})
+    pending_events = await db.events.count_documents({"status": "pending"})
+    
+    return {
+        "total_photographers": total_photographers,
+        "active_photographers": active_photographers,
+        "pending_photographers": pending_photographers,
+        "inactive_photographers": inactive_photographers,
+        "total_photos": total_photos,
+        "total_events": total_events,
+        "active_events": active_events,
+        "pending_events": pending_events
+    }
+
+@api_router.get("/admin/photographers")
+async def list_photographers(admin: dict = Depends(get_admin_user)):
+    """List all photographers"""
+    photographers = await db.users.find(
+        {"role": "photographer"},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(1000)
+    
+    # Get photo counts for each photographer
+    for photographer in photographers:
+        photo_count = await db.photos.count_documents({"photographer_id": photographer["user_id"]})
+        event_count = await db.events.count_documents({"photographer_id": photographer["user_id"]})
+        photographer["photo_count"] = photo_count
+        photographer["event_count"] = event_count
+    
+    return photographers
+
+@api_router.post("/admin/photographers/register")
+async def register_photographer(
+    request: RegisterPhotographerRequest,
+    admin: dict = Depends(get_admin_user)
+):
+    """Register a new photographer email (pre-approval)"""
+    # Check if already registered
+    existing = await db.registered_photographers.find_one({"email": request.email.lower()})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Also check if user already exists
+    existing_user = await db.users.find_one({"email": request.email.lower()})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="User with this email already exists")
+    
+    registration_id = str(uuid.uuid4())
+    await db.registered_photographers.insert_one({
+        "registration_id": registration_id,
+        "email": request.email.lower(),
+        "name": request.name,
+        "registered_by": admin["user_id"],
+        "created_at": datetime.now(timezone.utc)
+    })
+    
+    return {"message": f"Photographer {request.email} registered successfully", "registration_id": registration_id}
+
+@api_router.get("/admin/registered-photographers")
+async def list_registered_photographers(admin: dict = Depends(get_admin_user)):
+    """List all pre-registered photographer emails"""
+    registrations = await db.registered_photographers.find(
+        {},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(1000)
+    return registrations
+
+@api_router.delete("/admin/registered-photographers/{email}")
+async def remove_registered_photographer(
+    email: str,
+    admin: dict = Depends(get_admin_user)
+):
+    """Remove a pre-registered photographer email"""
+    result = await db.registered_photographers.delete_one({"email": email.lower()})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Registration not found")
+    return {"message": f"Registration for {email} removed"}
+
+@api_router.put("/admin/photographers/{user_id}/status")
+async def update_photographer_status(
+    user_id: str,
+    request: UpdatePhotographerStatusRequest,
+    admin: dict = Depends(get_admin_user)
+):
+    """Update photographer status (active, pending, inactive)"""
+    if request.status not in ["active", "pending", "inactive"]:
+        raise HTTPException(status_code=400, detail="Invalid status. Must be: active, pending, inactive")
+    
+    result = await db.users.update_one(
+        {"user_id": user_id, "role": "photographer"},
+        {"$set": {
+            "status": request.status,
+            "updated_at": datetime.now(timezone.utc),
+            "updated_by": admin["user_id"]
+        }}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Photographer not found")
+    
+    return {"message": f"Photographer status updated to {request.status}"}
+
+@api_router.delete("/admin/photographers/{user_id}")
+async def delete_photographer(
+    user_id: str,
+    admin: dict = Depends(get_admin_user)
+):
+    """Delete a photographer and their data"""
+    user = await db.users.find_one({"user_id": user_id, "role": "photographer"})
+    if not user:
+        raise HTTPException(status_code=404, detail="Photographer not found")
+    
+    # Delete user
+    await db.users.delete_one({"user_id": user_id})
+    # Delete sessions
+    await db.user_sessions.delete_many({"user_id": user_id})
+    # Optionally delete their registration
+    await db.registered_photographers.delete_one({"email": user["email"]})
+    
+    return {"message": "Photographer deleted successfully"}
+
+# ==================== EVENT MANAGEMENT ====================
+
+class CreateEventRequest(BaseModel):
+    event_name: str
+    bride_name: Optional[str] = None
+    groom_name: Optional[str] = None
+    event_date: str
+    venue: Optional[str] = None
+    notes: Optional[str] = None
+
+class UpdateEventStatusRequest(BaseModel):
+    status: str  # active, pending, completed, cancelled
+
+@api_router.post("/events")
+async def create_event(
+    request: CreateEventRequest,
+    user: dict = Depends(get_current_user_from_header)
+):
+    """Create a new wedding event (requires admin approval)"""
+    if user.get("role") not in ["photographer", "admin"]:
+        raise HTTPException(status_code=403, detail="Only photographers can create events")
+    
+    event_id = str(uuid.uuid4())
+    status = "active" if user.get("role") == "admin" else "pending"
+    
+    event_doc = {
+        "event_id": event_id,
+        "event_name": request.event_name,
+        "bride_name": request.bride_name,
+        "groom_name": request.groom_name,
+        "event_date": request.event_date,
+        "venue": request.venue,
+        "notes": request.notes,
+        "photographer_id": user["user_id"],
+        "photographer_name": user["name"],
+        "photographer_email": user["email"],
+        "status": status,
+        "created_at": datetime.now(timezone.utc),
+        "updated_at": datetime.now(timezone.utc)
+    }
+    
+    await db.events.insert_one(event_doc)
+    
+    message = "Event created and is active" if status == "active" else "Event created and pending admin approval"
+    return {"event_id": event_id, "status": status, "message": message}
+
+@api_router.get("/events")
+async def list_events(user: dict = Depends(get_current_user_from_header)):
+    """List events for the current photographer"""
+    if user.get("role") == "admin":
+        # Admin sees all events
+        events = await db.events.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    else:
+        # Photographer sees only their events
+        events = await db.events.find(
+            {"photographer_id": user["user_id"]},
+            {"_id": 0}
+        ).sort("created_at", -1).to_list(1000)
+    
+    return events
+
+@api_router.get("/events/{event_id}")
+async def get_event(event_id: str, user: dict = Depends(get_current_user_from_header)):
+    """Get a specific event"""
+    event = await db.events.find_one({"event_id": event_id}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    # Check access
+    if user.get("role") != "admin" and event["photographer_id"] != user["user_id"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    return event
+
+@api_router.put("/events/{event_id}")
+async def update_event(
+    event_id: str,
+    request: CreateEventRequest,
+    user: dict = Depends(get_current_user_from_header)
+):
+    """Update an event"""
+    event = await db.events.find_one({"event_id": event_id}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    # Check access
+    if user.get("role") != "admin" and event["photographer_id"] != user["user_id"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    await db.events.update_one(
+        {"event_id": event_id},
+        {"$set": {
+            "event_name": request.event_name,
+            "bride_name": request.bride_name,
+            "groom_name": request.groom_name,
+            "event_date": request.event_date,
+            "venue": request.venue,
+            "notes": request.notes,
+            "updated_at": datetime.now(timezone.utc)
+        }}
+    )
+    
+    return {"message": "Event updated successfully"}
+
+@api_router.delete("/events/{event_id}")
+async def delete_event(
+    event_id: str,
+    user: dict = Depends(get_current_user_from_header)
+):
+    """Delete an event"""
+    event = await db.events.find_one({"event_id": event_id}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    # Check access
+    if user.get("role") != "admin" and event["photographer_id"] != user["user_id"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    await db.events.delete_one({"event_id": event_id})
+    return {"message": "Event deleted successfully"}
+
+@api_router.get("/admin/events")
+async def list_all_events(admin: dict = Depends(get_admin_user)):
+    """List all events (admin only)"""
+    events = await db.events.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    return events
+
+@api_router.get("/admin/events/pending")
+async def list_pending_events(admin: dict = Depends(get_admin_user)):
+    """List pending events that need approval"""
+    events = await db.events.find(
+        {"status": "pending"},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(1000)
+    return events
+
+@api_router.put("/admin/events/{event_id}/status")
+async def update_event_status(
+    event_id: str,
+    request: UpdateEventStatusRequest,
+    admin: dict = Depends(get_admin_user)
+):
+    """Update event status (approve/reject events)"""
+    if request.status not in ["active", "pending", "completed", "cancelled"]:
+        raise HTTPException(status_code=400, detail="Invalid status")
+    
+    result = await db.events.update_one(
+        {"event_id": event_id},
+        {"$set": {
+            "status": request.status,
+            "updated_at": datetime.now(timezone.utc),
+            "approved_by": admin["user_id"] if request.status == "active" else None
+        }}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    return {"message": f"Event status updated to {request.status}"}
+
+# ==================== PUBLIC/SETTINGS ENDPOINTS ====================
+
 @api_router.get("/settings")
 async def get_settings():
     """Get photographer settings (public endpoint)"""
