@@ -2,15 +2,23 @@ import requests
 import sys
 import json
 import base64
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+import uuid
+import pymongo
 
 class WeddingPhotographyAPITester:
     def __init__(self, base_url="https://s3-app-bridge.preview.emergentagent.com"):
         self.base_url = base_url
-        self.session_token = None
+        self.admin_token = None
+        self.photographer_token = None
+        self.unregistered_token = None
         self.tests_run = 0
         self.tests_passed = 0
         self.test_results = []
+        
+        # Connect to MongoDB for setup
+        self.mongo_client = pymongo.MongoClient("mongodb://localhost:27017")
+        self.db = self.mongo_client["test_database"]
 
     def log_test(self, name, success, details=""):
         """Log test result"""
