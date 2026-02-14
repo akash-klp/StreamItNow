@@ -535,28 +535,36 @@ const Dashboard = ({ user: initialUser }) => {
                     </p>
                   </div>
                   
-                  {/* QR Code & Link */}
-                  <div className="flex flex-col items-center bg-gray-700/50 rounded-lg p-4">
+                  {/* QR Code & Link - Made Bigger */}
+                  <div className="flex flex-col items-center bg-gray-700/50 rounded-xl p-6 min-w-[200px]">
                     {selectedEvent.qr_code && (
                       <img
                         src={selectedEvent.qr_code}
                         alt="Event QR Code"
-                        className="w-24 h-24 rounded-lg mb-3"
+                        className="w-40 h-40 rounded-lg mb-4 border-2 border-gray-600"
                       />
                     )}
-                    <div className="flex items-center gap-2">
-                      <code className="text-xs text-gray-400 bg-gray-900 px-2 py-1 rounded">
-                        {selectedEvent.event_slug}
+                    <p className="text-sm font-medium text-white mb-2">Guest Access Link</p>
+                    <div className="flex items-center gap-2 bg-gray-900 px-3 py-2 rounded-lg">
+                      <code className="text-sm text-gray-300">
+                        /event/{selectedEvent.event_slug}
                       </code>
                       <button
                         onClick={() => copyToClipboard(`${window.location.origin}/event/${selectedEvent.event_slug}`)}
-                        className="text-gray-400 hover:text-white"
+                        className="text-gray-400 hover:text-white p-1"
                         title="Copy event link"
                       >
                         <FiCopy className="w-4 h-4" />
                       </button>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">Guest access link</p>
+                    <a
+                      href={`/event/${selectedEvent.event_slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-3 text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                    >
+                      <FiEye className="w-4 h-4" /> Preview Guest Page
+                    </a>
                   </div>
                 </div>
               </div>
