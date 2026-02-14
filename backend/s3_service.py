@@ -53,16 +53,15 @@ class S3Service:
         photographers/{photographer_id}/events/{event_id}/
             ├── cover-photos/
             ├── wall-section/
-            └── main-gallery/
-                └── sections/
+            ├── main-gallery/
+            └── {custom-sections}/   # Created by photographer
         """
         try:
             base_path = f"photographers/{photographer_id}/events/{event_id}"
             folders = [
                 f"{base_path}/cover-photos/.placeholder",
                 f"{base_path}/wall-section/.placeholder",
-                f"{base_path}/main-gallery/.placeholder",
-                f"{base_path}/main-gallery/sections/.placeholder"
+                f"{base_path}/main-gallery/.placeholder"
             ]
             
             for folder in folders:
@@ -80,9 +79,9 @@ class S3Service:
             return False
 
     def create_section_folder(self, photographer_id: str, event_id: str, section_name: str) -> bool:
-        """Create a custom section folder within main-gallery"""
+        """Create a custom section folder at the same level as cover-photos and wall-section"""
         try:
-            key = f"photographers/{photographer_id}/events/{event_id}/main-gallery/sections/{section_name}/.placeholder"
+            key = f"photographers/{photographer_id}/events/{event_id}/{section_name}/.placeholder"
             self.s3_client.put_object(
                 Bucket=self.bucket_name,
                 Key=key,
