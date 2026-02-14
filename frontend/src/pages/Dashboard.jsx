@@ -74,12 +74,10 @@ const Dashboard = ({ user: initialUser }) => {
     }
   };
 
-  const fetchEventPhotos = useCallback(async (eventId, folderType, sectionName = null) => {
+  const fetchEventPhotos = useCallback(async (eventId, folderType) => {
     try {
-      let url = `${BACKEND_URL}/api/events/${eventId}/photos?folder_type=${folderType}`;
-      if (sectionName) {
-        url += `&section_name=${sectionName}`;
-      }
+      // folderType can be: cover-photos, wall-section, main-gallery, or any custom section name
+      const url = `${BACKEND_URL}/api/events/${eventId}/photos?folder_type=${folderType}`;
       const response = await axios.get(url, getAuthHeaders());
       setPhotos(response.data.photos || []);
     } catch (error) {
