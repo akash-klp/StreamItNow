@@ -132,15 +132,21 @@ const Dashboard = ({ user: initialUser }) => {
       toast.error('Please enter a section name');
       return;
     }
+    
+    const sectionToCreate = newSectionName.trim();
+    setNewSectionName(''); // Clear immediately for better UX
+    
     try {
-      await axios.post(
+      const response = await axios.post(
         `${BACKEND_URL}/api/events/${selectedEvent.event_id}/sections`,
-        { section_name: newSectionName },
+        { section_name: sectionToCreate },
         getAuthHeaders()
       );
-      toast.success(`Section "${newSectionName}" created`);
-      setNewSectionName('');
-      fetchSections(selectedEvent.event_id);
+      toast.success(`✅ Section "${response.data.section_name}" created successfully in S3!`, {
+        duration: 4000
+      });
+      // Refresh sections list
+      await fetchSections(selectedEvent.event_id);
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to create section');
     }
