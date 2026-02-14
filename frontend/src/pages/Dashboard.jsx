@@ -1,36 +1,50 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { motion } from 'framer-motion';
-import { FiUpload, FiLogOut, FiTrash2, FiSettings, FiImage } from 'react-icons/fi';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  FiUpload, FiLogOut, FiTrash2, FiSettings, FiImage, FiPlus, 
+  FiCalendar, FiEye, FiCopy, FiX, FiFolder, FiGrid, FiDownload,
+  FiChevronLeft, FiChevronRight
+} from 'react-icons/fi';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { toast } from 'sonner';
-import Settings from '../components/Settings';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 const Dashboard = ({ user: initialUser }) => {
   const navigate = useNavigate();
   const [user, setUser] = useState(initialUser);
-  const [activeTab, setActiveTab] = useState('gallery');
+  const [activeTab, setActiveTab] = useState('events');
+  const [events, setEvents] = useState([]);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [activeFolder, setActiveFolder] = useState('cover-photos');
   const [photos, setPhotos] = useState([]);
-  const [wallPhotos, setWallPhotos] = useState([]);
-  const [backgroundImages, setBackgroundImages] = useState([]);
+  const [photoCounts, setPhotoCounts] = useState({});
+  const [sections, setSections] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
-  const [notes, setNotes] = useState('');
-  const [wallSelectedFile, setWallSelectedFile] = useState(null);
-  const [wallPreviewUrl, setWallPreviewUrl] = useState(null);
-  const [bgSelectedFile, setBgSelectedFile] = useState(null);
-  const [bgPreviewUrl, setBgPreviewUrl] = useState(null);
-  const [selectedPhotos, setSelectedPhotos] = useState([]);
-  const [selectionMode, setSelectionMode] = useState(false);
-  const [uploadingWall, setUploadingWall] = useState(false);
-  const [uploadingBg, setUploadingBg] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [previewUrls, setPreviewUrls] = useState([]);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  
+  // New event form
+  const [showNewEventForm, setShowNewEventForm] = useState(false);
+  const [newEvent, setNewEvent] = useState({
+    event_name: '',
+    bride_name: '',
+    groom_name: '',
+    event_date: '',
+    venue: '',
+    notes: ''
+  });
+  
+  // New section form
+  const [newSectionName, setNewSectionName] = useState('');
 
   useEffect(() => {
     if (!user) {
@@ -39,286 +53,189 @@ const Dashboard = ({ user: initialUser }) => {
         setUser(JSON.parse(storedUser));
       }
     }
-    fetchPhotos();
-    fetchWallPhotos();
-    fetchBackgroundImages();
+    fetchEvents();
   }, [user]);
 
-  const fetchPhotos = async () => {
+  const getAuthHeaders = () => ({
+    headers: { Authorization: `Bearer ${localStorage.getItem('session_token')}` }
+  });
+
+  const fetchEvents = async () => {
+    setLoading(true);
     try {
-      const token = localStorage.getItem('session_token');
-      const response = await axios.get(`${BACKEND_URL}/api/photos/list`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setPhotos(response.data);
+      const response = await axios.get(`${BACKEND_URL}/api/events`, getAuthHeaders());
+      setEvents(response.data);
+    } catch (error) {
+      console.error('Failed to fetch events:', error);
+      toast.error('Failed to load events');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchEventPhotos = useCallback(async (eventId, folderType, sectionName = null) => {
+    try {
+      let url = `${BACKEND_URL}/api/events/${eventId}/photos?folder_type=${folderType}`;
+      if (sectionName) {
+        url += `&section_name=${sectionName}`;
+      }
+      const response = await axios.get(url, getAuthHeaders());
+      setPhotos(response.data.photos || []);
     } catch (error) {
       console.error('Failed to fetch photos:', error);
+      setPhotos([]);
     }
-  };
+  }, []);
 
-  const fetchWallPhotos = async () => {
+  const fetchPhotoCounts = useCallback(async (eventId) => {
     try {
-      const token = localStorage.getItem('session_token');
-      const response = await axios.get(`${BACKEND_URL}/api/wall-photos`);
-      setWallPhotos(response.data);
+      const response = await axios.get(`${BACKEND_URL}/api/events/${eventId}/photo-counts`, getAuthHeaders());
+      setPhotoCounts(response.data);
     } catch (error) {
-      console.error('Failed to fetch wall photos:', error);
+      console.error('Failed to fetch photo counts:', error);
     }
-  };
+  }, []);
 
-  const fetchBackgroundImages = async () => {
+  const fetchSections = useCallback(async (eventId) => {
     try {
-      const response = await axios.get(`${BACKEND_URL}/api/background-images`);
-      setBackgroundImages(response.data);
+      const response = await axios.get(`${BACKEND_URL}/api/events/${eventId}/sections`, getAuthHeaders());
+      setSections(response.data.sections || []);
     } catch (error) {
-      console.error('Failed to fetch background images:', error);
+      console.error('Failed to fetch sections:', error);
+      setSections([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedEvent) {
+      fetchEventPhotos(selectedEvent.event_id, activeFolder);
+      fetchPhotoCounts(selectedEvent.event_id);
+      fetchSections(selectedEvent.event_id);
+    }
+  }, [selectedEvent, activeFolder, fetchEventPhotos, fetchPhotoCounts, fetchSections]);
+
+  const handleCreateEvent = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await axios.post(`${BACKEND_URL}/api/events`, newEvent, getAuthHeaders());
+      toast.success(response.data.message);
+      setShowNewEventForm(false);
+      setNewEvent({ event_name: '', bride_name: '', groom_name: '', event_date: '', venue: '', notes: '' });
+      fetchEvents();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to create event');
     }
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error('File size must be less than 10MB');
-        return;
+  const handleCreateSection = async () => {
+    if (!newSectionName.trim()) {
+      toast.error('Please enter a section name');
+      return;
+    }
+    try {
+      await axios.post(
+        `${BACKEND_URL}/api/events/${selectedEvent.event_id}/sections`,
+        { section_name: newSectionName },
+        getAuthHeaders()
+      );
+      toast.success(`Section "${newSectionName}" created`);
+      setNewSectionName('');
+      fetchSections(selectedEvent.event_id);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to create section');
+    }
+  };
+
+  const handleFileSelect = (e) => {
+    const files = Array.from(e.target.files || []);
+    const validFiles = files.filter(file => {
+      if (file.size > 50 * 1024 * 1024) {
+        toast.error(`${file.name} is too large (max 50MB)`);
+        return false;
       }
       if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-        toast.error('File must be JPEG, PNG, or WebP');
-        return;
+        toast.error(`${file.name} is not a valid image type`);
+        return false;
       }
+      return true;
+    });
 
-      setSelectedFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewUrl(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
+    setSelectedFiles(validFiles);
+    
+    // Create previews
+    const previews = validFiles.map(file => URL.createObjectURL(file));
+    setPreviewUrls(previews);
   };
 
   const handleUpload = async () => {
-    if (!selectedFile) {
-      toast.error('Please select a photo');
+    if (selectedFiles.length === 0) {
+      toast.error('Please select files to upload');
       return;
     }
 
     setUploading(true);
+    let successCount = 0;
 
-    try {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64Data = reader.result;
+    for (const file of selectedFiles) {
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('folder_type', activeFolder);
+        if (activeFolder === 'main-gallery' && sections.length > 0) {
+          // For main gallery, you might want to select a section
+        }
 
-        const token = localStorage.getItem('session_token');
         await axios.post(
-          `${BACKEND_URL}/api/photos/upload`,
+          `${BACKEND_URL}/api/events/${selectedEvent.event_id}/photos/upload`,
+          formData,
           {
-            filename: selectedFile.name,
-            image_data: base64Data,
-            wedding_date: new Date().toISOString().split('T')[0],
-            photographer_notes: notes
-          },
-          {
-            headers: { Authorization: `Bearer ${token}` }
+            ...getAuthHeaders(),
+            headers: {
+              ...getAuthHeaders().headers,
+              'Content-Type': 'multipart/form-data'
+            }
           }
         );
-
-        toast.success('Photo uploaded successfully!');
-        setSelectedFile(null);
-        setPreviewUrl(null);
-        setNotes('');
-        fetchPhotos();
-      };
-      reader.readAsDataURL(selectedFile);
-    } catch (error) {
-      console.error('Upload failed:', error);
-      toast.error('Upload failed. Please try again.');
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleWallFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error('File size must be less than 10MB');
-        return;
+        successCount++;
+      } catch (error) {
+        toast.error(`Failed to upload ${file.name}: ${error.response?.data?.detail || 'Unknown error'}`);
       }
-      if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-        toast.error('File must be JPEG, PNG, or WebP');
-        return;
-      }
-
-      setWallSelectedFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setWallPreviewUrl(reader.result);
-      };
-      reader.readAsDataURL(file);
     }
+
+    if (successCount > 0) {
+      toast.success(`${successCount} photo(s) uploaded successfully`);
+      setSelectedFiles([]);
+      setPreviewUrls([]);
+      fetchEventPhotos(selectedEvent.event_id, activeFolder);
+      fetchPhotoCounts(selectedEvent.event_id);
+    }
+    setUploading(false);
   };
 
-  const handleWallUpload = async () => {
-    if (!wallSelectedFile) {
-      toast.error('Please select a photo');
-      return;
-    }
-
-    setUploadingWall(true);
-
-    try {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64Data = reader.result;
-
-        const token = localStorage.getItem('session_token');
-        await axios.post(
-          `${BACKEND_URL}/api/wall-photos/upload`,
-          {
-            filename: wallSelectedFile.name,
-            image_data: base64Data
-          },
-          {
-            headers: { Authorization: `Bearer ${token}` }
-          }
-        );
-
-        toast.success('Wall photo uploaded successfully!');
-        setWallSelectedFile(null);
-        setWallPreviewUrl(null);
-        fetchWallPhotos();
-      };
-      reader.readAsDataURL(wallSelectedFile);
-    } catch (error) {
-      console.error('Upload failed:', error);
-      toast.error('Upload failed. Please try again.');
-    } finally {
-      setUploadingWall(false);
-    }
-  };
-
-  const handleBgFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error('File size must be less than 10MB');
-        return;
-      }
-      if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-        toast.error('File must be JPEG, PNG, or WebP');
-        return;
-      }
-
-      setBgSelectedFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setBgPreviewUrl(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleBgUpload = async () => {
-    if (!bgSelectedFile) {
-      toast.error('Please select a photo');
-      return;
-    }
-
-    setUploadingBg(true);
-
-    try {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64Data = reader.result;
-
-        const token = localStorage.getItem('session_token');
-        await axios.post(
-          `${BACKEND_URL}/api/background-images/upload`,
-          {
-            filename: bgSelectedFile.name,
-            image_data: base64Data
-          },
-          {
-            headers: { Authorization: `Bearer ${token}` }
-          }
-        );
-
-        toast.success('Background image uploaded successfully!');
-        setBgSelectedFile(null);
-        setBgPreviewUrl(null);
-        fetchBackgroundImages();
-      };
-      reader.readAsDataURL(bgSelectedFile);
-    } catch (error) {
-      console.error('Upload failed:', error);
-      toast.error('Upload failed. Please try again.');
-    } finally {
-      setUploadingBg(false);
-    }
-  };
-
-  const togglePhotoSelection = (photoId) => {
-    setSelectedPhotos(prev => 
-      prev.includes(photoId) 
-        ? prev.filter(id => id !== photoId)
-        : [...prev, photoId]
-    );
-  };
-
-  const handleDelete = async (photoId) => {
+  const handleDeletePhoto = async (photoId) => {
     if (!window.confirm('Are you sure you want to delete this photo?')) return;
 
     try {
-      const token = localStorage.getItem('session_token');
-      await axios.delete(`${BACKEND_URL}/api/photos/${photoId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      toast.success('Photo deleted successfully');
-      fetchPhotos();
+      await axios.delete(
+        `${BACKEND_URL}/api/events/${selectedEvent.event_id}/photos/${photoId}`,
+        getAuthHeaders()
+      );
+      toast.success('Photo deleted');
+      fetchEventPhotos(selectedEvent.event_id, activeFolder);
+      fetchPhotoCounts(selectedEvent.event_id);
     } catch (error) {
-      console.error('Delete failed:', error);
       toast.error('Failed to delete photo');
     }
   };
 
-  const handleBulkDelete = async () => {
-    if (selectedPhotos.length === 0) {
-      toast.error('No photos selected');
-      return;
-    }
-
-    if (!window.confirm(`Delete ${selectedPhotos.length} selected photos?`)) return;
-
-    try {
-      const token = localStorage.getItem('session_token');
-      await Promise.all(
-        selectedPhotos.map(photoId =>
-          axios.delete(`${BACKEND_URL}/api/photos/${photoId}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          })
-        )
-      );
-      toast.success(`${selectedPhotos.length} photos deleted successfully`);
-      setSelectedPhotos([]);
-      setSelectionMode(false);
-      fetchPhotos();
-    } catch (error) {
-      console.error('Bulk delete failed:', error);
-      toast.error('Failed to delete some photos');
-    }
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    toast.success('Copied to clipboard!');
   };
 
   const handleLogout = async () => {
     try {
-      const token = localStorage.getItem('session_token');
-      await axios.post(
-        `${BACKEND_URL}/api/auth/logout`,
-        {},
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
+      await axios.post(`${BACKEND_URL}/api/auth/logout`, {}, getAuthHeaders());
     } catch (error) {
       console.error('Logout failed:', error);
     } finally {
@@ -328,36 +245,72 @@ const Dashboard = ({ user: initialUser }) => {
     }
   };
 
+  const getStatusBadge = (status) => {
+    const badges = {
+      active: 'bg-green-500/20 text-green-400 border-green-500/30',
+      pending: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+      completed: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+      cancelled: 'bg-red-500/20 text-red-400 border-red-500/30'
+    };
+    return badges[status] || badges.pending;
+  };
+
+  const getFolderLabel = (folder) => {
+    const labels = {
+      'cover-photos': 'Cover Photos (Header Slideshow)',
+      'wall-section': 'Wall Section (Marquee)',
+      'main-gallery': 'Main Gallery'
+    };
+    return labels[folder] || folder;
+  };
+
+  const getFolderLimit = (folder) => {
+    const limits = {
+      'cover-photos': { min: 7, max: 20 },
+      'wall-section': { min: 10, max: 40 },
+      'main-gallery': { min: 0, max: 1000 }
+    };
+    return limits[folder] || { min: 0, max: 1000 };
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-400"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-white" data-testid="photographer-dashboard">
+    <div className="min-h-screen bg-gray-900 text-gray-100" data-testid="photographer-dashboard">
       {/* Header */}
-      <div className="border-b border-warmgrey glass-header sticky top-0 z-10">
+      <div className="bg-gray-800 border-b border-gray-700 sticky top-0 z-20">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
             {user?.picture && (
               <img
                 src={user.picture}
                 alt={user.name}
-                className="w-10 h-10 rounded-full border-2 border-gold"
+                className="w-10 h-10 rounded-full border-2 border-gray-600"
               />
             )}
             <div>
-              <h2 className="font-heading text-xl text-foreground">{user?.name}</h2>
-              <p className="text-sm text-foreground/60 font-body">Photographer Dashboard</p>
+              <h2 className="font-semibold text-lg text-white">{user?.name}</h2>
+              <p className="text-sm text-gray-400">Photographer Dashboard</p>
             </div>
           </div>
-          <div className="flex gap-4">
+          <div className="flex gap-3">
             <Button
               variant="outline"
               onClick={() => navigate('/')}
-              className="font-body"
+              className="border-gray-600 text-gray-300 hover:bg-gray-700"
             >
-              View Guest Page
+              <FiEye className="mr-2" /> View Site
             </Button>
             <Button
               variant="outline"
               onClick={handleLogout}
-              className="font-body"
+              className="border-gray-600 text-gray-300 hover:bg-gray-700"
               data-testid="logout-button"
             >
               <FiLogOut className="mr-2" /> Logout
@@ -366,430 +319,499 @@ const Dashboard = ({ user: initialUser }) => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <h1 className="text-4xl md:text-5xl font-heading italic text-foreground mb-2">
-            Photographer Dashboard
-          </h1>
-          <p className="text-foreground/70 font-body mb-8">
-            Manage your wedding photos and settings
-          </p>
-
-          {/* Tab Navigation */}
-          <div className="flex space-x-1 mb-8 glass-panel p-1 rounded-lg">
-            <button
-              onClick={() => setActiveTab('gallery')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md font-body transition-all ${
-                activeTab === 'gallery'
-                  ? 'bg-gold text-white shadow-md'
-                  : 'text-foreground/70 hover:text-foreground hover:bg-white/50'
-              }`}
-            >
-              <FiImage className="w-4 h-4" />
-              Photo Gallery
-            </button>
-            <button
-              onClick={() => setActiveTab('wall')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md font-body transition-all ${
-                activeTab === 'wall'
-                  ? 'bg-gold text-white shadow-md'
-                  : 'text-foreground/70 hover:text-foreground hover:bg-white/50'
-              }`}
-            >
-              <FiImage className="w-4 h-4" />
-              Wall Display
-            </button>
-            <button
-              onClick={() => setActiveTab('background')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md font-body transition-all ${
-                activeTab === 'background'
-                  ? 'bg-gold text-white shadow-md'
-                  : 'text-foreground/70 hover:text-foreground hover:bg-white/50'
-              }`}
-            >
-              <FiImage className="w-4 h-4" />
-              Header Backgrounds
-            </button>
-            <button
-              onClick={() => setActiveTab('settings')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md font-body transition-all ${
-                activeTab === 'settings'
-                  ? 'bg-gold text-white shadow-md'
-                  : 'text-foreground/70 hover:text-foreground hover:bg-white/50'
-              }`}
-            >
-              <FiSettings className="w-4 h-4" />
-              Settings
-            </button>
-          </div>
-
-          {/* Tab Content */}
-          {activeTab === 'gallery' && (
-            <>
-              {/* Upload Card */}
-              <Card className="p-8 mb-12 shadow-gold-soft border-warmgrey">
-                <h2 className="text-2xl font-heading text-foreground mb-6">Upload New Photo</h2>
-            <div className="space-y-6">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Events List or Event Detail */}
+        {!selectedEvent ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="flex justify-between items-center mb-8">
               <div>
-                <Label htmlFor="photo" className="font-body text-foreground mb-2 block">
-                  Select Photo
-                </Label>
-                <Input
-                  id="photo"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={handleFileChange}
-                  disabled={uploading}
-                  className="cursor-pointer"
-                  data-testid="file-input"
-                />
-                <p className="text-sm text-foreground/60 font-body mt-1">
-                  JPEG, PNG, or WebP format. Max 10MB.
-                </p>
+                <h1 className="text-3xl font-bold text-white mb-2">My Events</h1>
+                <p className="text-gray-400">Manage your wedding events and photos</p>
               </div>
-
-              {previewUrl && (
-                <div className="rounded-lg overflow-hidden border border-warmgrey">
-                  <img
-                    src={previewUrl}
-                    alt="Preview"
-                    className="w-full h-64 object-cover"
-                  />
-                </div>
-              )}
-
-              <div>
-                <Label htmlFor="notes" className="font-body text-foreground mb-2 block">
-                  Photographer Notes (Optional)
-                </Label>
-                <Input
-                  id="notes"
-                  placeholder="e.g., Ceremony details, special moments..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  disabled={uploading}
-                  data-testid="notes-input"
-                />
-              </div>
-
               <Button
-                onClick={handleUpload}
-                disabled={uploading || !selectedFile}
-                className="w-full bg-gold hover:bg-gold/90 text-white font-body font-medium py-6 text-lg"
-                data-testid="upload-button"
+                onClick={() => setShowNewEventForm(true)}
+                className="bg-gray-700 hover:bg-gray-600 text-white"
               >
-                {uploading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <FiUpload className="mr-2" /> Upload Photo
-                  </>
-                )}
+                <FiPlus className="mr-2" /> Create New Event
               </Button>
             </div>
-          </Card>
 
-          {/* Uploaded Photos */}
-          <div>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-3xl font-heading text-foreground">
-                Your Uploaded Photos ({photos.length})
-              </h2>
-              <div className="flex gap-2">
-                <Button
-                  variant={selectionMode ? "default" : "outline"}
-                  onClick={() => {
-                    setSelectionMode(!selectionMode);
-                    setSelectedPhotos([]);
-                  }}
-                  className="font-body"
+            {/* New Event Form Modal */}
+            <AnimatePresence>
+              {showNewEventForm && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+                  onClick={() => setShowNewEventForm(false)}
                 >
-                  {selectionMode ? 'Cancel Selection' : 'Select Multiple'}
-                </Button>
-                {selectionMode && selectedPhotos.length > 0 && (
-                  <Button
-                    variant="destructive"
-                    onClick={handleBulkDelete}
-                    className="font-body"
+                  <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.9, opacity: 0 }}
+                    className="bg-gray-800 rounded-xl p-6 w-full max-w-lg border border-gray-700"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    Delete Selected ({selectedPhotos.length})
-                  </Button>
-                )}
-              </div>
-            </div>
+                    <div className="flex justify-between items-center mb-6">
+                      <h2 className="text-xl font-semibold text-white">Create New Event</h2>
+                      <button
+                        onClick={() => setShowNewEventForm(false)}
+                        className="text-gray-400 hover:text-white"
+                      >
+                        <FiX className="w-5 h-5" />
+                      </button>
+                    </div>
 
-            {photos.length === 0 ? (
-              <Card className="p-12 text-center shadow-gold-soft">
-                <p className="text-foreground/60 font-body">
-                  No photos uploaded yet. Start uploading to share beautiful moments!
-                </p>
+                    <form onSubmit={handleCreateEvent} className="space-y-4">
+                      <div>
+                        <Label className="text-gray-300">Event Name *</Label>
+                        <Input
+                          value={newEvent.event_name}
+                          onChange={(e) => setNewEvent({ ...newEvent, event_name: e.target.value })}
+                          placeholder="e.g., John & Jane's Wedding"
+                          required
+                          className="bg-gray-700 border-gray-600 text-white"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-gray-300">Bride's Name</Label>
+                          <Input
+                            value={newEvent.bride_name}
+                            onChange={(e) => setNewEvent({ ...newEvent, bride_name: e.target.value })}
+                            placeholder="Bride's name"
+                            className="bg-gray-700 border-gray-600 text-white"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-gray-300">Groom's Name</Label>
+                          <Input
+                            value={newEvent.groom_name}
+                            onChange={(e) => setNewEvent({ ...newEvent, groom_name: e.target.value })}
+                            placeholder="Groom's name"
+                            className="bg-gray-700 border-gray-600 text-white"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-gray-300">Event Date *</Label>
+                          <Input
+                            type="date"
+                            value={newEvent.event_date}
+                            onChange={(e) => setNewEvent({ ...newEvent, event_date: e.target.value })}
+                            required
+                            className="bg-gray-700 border-gray-600 text-white"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-gray-300">Venue</Label>
+                          <Input
+                            value={newEvent.venue}
+                            onChange={(e) => setNewEvent({ ...newEvent, venue: e.target.value })}
+                            placeholder="Venue location"
+                            className="bg-gray-700 border-gray-600 text-white"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-gray-300">Notes</Label>
+                        <Input
+                          value={newEvent.notes}
+                          onChange={(e) => setNewEvent({ ...newEvent, notes: e.target.value })}
+                          placeholder="Any additional notes"
+                          className="bg-gray-700 border-gray-600 text-white"
+                        />
+                      </div>
+                      <Button
+                        type="submit"
+                        className="w-full bg-gray-600 hover:bg-gray-500 text-white"
+                      >
+                        Create Event
+                      </Button>
+                    </form>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Events Grid */}
+            {events.length === 0 ? (
+              <Card className="p-12 text-center bg-gray-800 border-gray-700">
+                <FiCalendar className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                <p className="text-gray-400 text-lg">No events yet. Create your first event to get started!</p>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {photos.map((photo) => (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {events.map((event) => (
                   <motion.div
-                    key={photo.photo_id}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.3 }}
+                    key={event.event_id}
+                    whileHover={{ scale: 1.02 }}
+                    transition={{ duration: 0.2 }}
                   >
-                    <Card className={`overflow-hidden shadow-gold-soft hover:shadow-xl transition-all group ${
-                      selectedPhotos.includes(photo.photo_id) ? 'ring-4 ring-gold' : ''
-                    }`}>
-                      <div className="relative">
-                        <img
-                          src={photo.image_data}
-                          alt={photo.filename}
-                          className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                        {selectionMode ? (
-                          <button
-                            onClick={() => togglePhotoSelection(photo.photo_id)}
-                            className={`absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
-                              selectedPhotos.includes(photo.photo_id)
-                                ? 'bg-gold text-white'
-                                : 'bg-white/90 text-foreground'
-                            }`}
-                            data-testid="select-photo-checkbox"
-                          >
-                            {selectedPhotos.includes(photo.photo_id) && '\u2713'}
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleDelete(photo.photo_id)}
-                            className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                            data-testid="delete-photo-button"
-                          >
-                            <FiTrash2 />
-                          </button>
-                        )}
-                      </div>
-                      <div className="p-4">
-                        <p className="text-sm font-body text-foreground/80">
-                          {new Date(photo.upload_timestamp).toLocaleDateString()}
-                        </p>
-                        {photo.photographer_notes && (
-                          <p className="text-sm font-body text-foreground/60 mt-1">
-                            {photo.photographer_notes}
+                    <Card
+                      className="bg-gray-800 border-gray-700 overflow-hidden cursor-pointer hover:border-gray-500 transition-colors"
+                      onClick={() => setSelectedEvent(event)}
+                    >
+                      <div className="p-6">
+                        <div className="flex justify-between items-start mb-4">
+                          <h3 className="text-lg font-semibold text-white">{event.event_name}</h3>
+                          <span className={`px-2 py-1 rounded-full text-xs border ${getStatusBadge(event.status)}`}>
+                            {event.status}
+                          </span>
+                        </div>
+                        
+                        {event.bride_name && event.groom_name && (
+                          <p className="text-gray-400 text-sm mb-2">
+                            💍 {event.bride_name} & {event.groom_name}
                           </p>
                         )}
+                        
+                        <p className="text-gray-500 text-sm mb-2">
+                          📅 {new Date(event.event_date).toLocaleDateString()}
+                        </p>
+                        
+                        {event.venue && (
+                          <p className="text-gray-500 text-sm mb-4">📍 {event.venue}</p>
+                        )}
+
+                        <div className="flex items-center justify-between pt-4 border-t border-gray-700">
+                          <span className="text-xs text-gray-500">
+                            Click to manage photos
+                          </span>
+                          <FiChevronRight className="text-gray-500" />
+                        </div>
                       </div>
                     </Card>
                   </motion.div>
                 ))}
               </div>
             )}
-          </div>
-          </>
-          )}
-
-          {activeTab === 'wall' && (
-            <div>
-              {/* Wall Photo Upload Card */}
-              <Card className="p-8 mb-12 shadow-gold-soft border-warmgrey">
-                <h2 className="text-2xl font-heading text-foreground mb-6">Upload to Wall Display</h2>
-                <div className="space-y-6">
+          </motion.div>
+        ) : (
+          /* Event Detail View */
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            {/* Back Button & Event Header */}
+            <div className="mb-6">
+              <button
+                onClick={() => {
+                  setSelectedEvent(null);
+                  setPhotos([]);
+                  setActiveFolder('cover-photos');
+                }}
+                className="flex items-center gap-2 text-gray-400 hover:text-white mb-4"
+              >
+                <FiChevronLeft /> Back to Events
+              </button>
+              
+              <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
                   <div>
-                    <Label htmlFor="wall-photo" className="font-body text-foreground mb-2 block">
-                      Select Photo for Wall Display
-                    </Label>
-                    <Input
-                      id="wall-photo"
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      onChange={handleWallFileChange}
-                      disabled={uploadingWall}
-                      className="cursor-pointer"
-                      data-testid="wall-file-input"
-                    />
-                    <p className="text-sm text-foreground/60 font-body mt-1">
-                      JPEG, PNG, or WebP format. Max 10MB.
+                    <div className="flex items-center gap-3 mb-2">
+                      <h1 className="text-2xl font-bold text-white">{selectedEvent.event_name}</h1>
+                      <span className={`px-2 py-1 rounded-full text-xs border ${getStatusBadge(selectedEvent.status)}`}>
+                        {selectedEvent.status}
+                      </span>
+                    </div>
+                    {selectedEvent.bride_name && selectedEvent.groom_name && (
+                      <p className="text-gray-400">💍 {selectedEvent.bride_name} & {selectedEvent.groom_name}</p>
+                    )}
+                    <p className="text-gray-500 text-sm mt-1">
+                      📅 {new Date(selectedEvent.event_date).toLocaleDateString()}
+                      {selectedEvent.venue && ` • 📍 ${selectedEvent.venue}`}
                     </p>
                   </div>
-
-                  {wallPreviewUrl && (
-                    <div className="rounded-lg overflow-hidden border border-warmgrey">
+                  
+                  {/* QR Code & Link */}
+                  <div className="flex flex-col items-center bg-gray-700/50 rounded-lg p-4">
+                    {selectedEvent.qr_code && (
                       <img
-                        src={wallPreviewUrl}
-                        alt="Preview"
-                        className="w-full h-64 object-cover"
+                        src={selectedEvent.qr_code}
+                        alt="Event QR Code"
+                        className="w-24 h-24 rounded-lg mb-3"
                       />
+                    )}
+                    <div className="flex items-center gap-2">
+                      <code className="text-xs text-gray-400 bg-gray-900 px-2 py-1 rounded">
+                        {selectedEvent.event_slug}
+                      </code>
+                      <button
+                        onClick={() => copyToClipboard(`${window.location.origin}/event/${selectedEvent.event_slug}`)}
+                        className="text-gray-400 hover:text-white"
+                        title="Copy event link"
+                      >
+                        <FiCopy className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Guest access link</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Photo Counts Summary */}
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <Card className="bg-gray-800 border-gray-700 p-4">
+                <p className="text-gray-400 text-sm">Cover Photos</p>
+                <p className="text-2xl font-bold text-white">
+                  {photoCounts.cover_photos || 0}
+                  <span className="text-sm font-normal text-gray-500"> / 20</span>
+                </p>
+              </Card>
+              <Card className="bg-gray-800 border-gray-700 p-4">
+                <p className="text-gray-400 text-sm">Wall Section</p>
+                <p className="text-2xl font-bold text-white">
+                  {photoCounts.wall_section || 0}
+                  <span className="text-sm font-normal text-gray-500"> / 40</span>
+                </p>
+              </Card>
+              <Card className="bg-gray-800 border-gray-700 p-4">
+                <p className="text-gray-400 text-sm">Main Gallery</p>
+                <p className="text-2xl font-bold text-white">
+                  {photoCounts.main_gallery || 0}
+                </p>
+              </Card>
+            </div>
+
+            {/* Folder Tabs */}
+            <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+              {['cover-photos', 'wall-section', 'main-gallery'].map((folder) => (
+                <button
+                  key={folder}
+                  onClick={() => setActiveFolder(folder)}
+                  className={`px-4 py-2 rounded-lg whitespace-nowrap transition-colors ${
+                    activeFolder === folder
+                      ? 'bg-gray-600 text-white'
+                      : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                  }`}
+                >
+                  <FiFolder className="inline mr-2" />
+                  {folder.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                </button>
+              ))}
+            </div>
+
+            {/* Sections (for main-gallery) */}
+            {activeFolder === 'main-gallery' && (
+              <div className="mb-6">
+                <div className="flex items-center gap-4 mb-4">
+                  <h3 className="text-lg font-semibold text-white">Gallery Sections</h3>
+                  <div className="flex gap-2">
+                    <Input
+                      value={newSectionName}
+                      onChange={(e) => setNewSectionName(e.target.value)}
+                      placeholder="New section name"
+                      className="bg-gray-800 border-gray-700 text-white w-48"
+                    />
+                    <Button
+                      onClick={handleCreateSection}
+                      size="sm"
+                      className="bg-gray-700 hover:bg-gray-600"
+                    >
+                      <FiPlus className="mr-1" /> Add
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  {sections.map((section) => (
+                    <button
+                      key={section}
+                      onClick={() => fetchEventPhotos(selectedEvent.event_id, 'main-gallery', section)}
+                      className="px-3 py-1 rounded-full bg-gray-700 text-gray-300 text-sm hover:bg-gray-600"
+                    >
+                      {section}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Upload Section */}
+            {selectedEvent.status === 'active' && (
+              <Card className="bg-gray-800 border-gray-700 p-6 mb-6">
+                <h3 className="text-lg font-semibold text-white mb-4">
+                  Upload to {getFolderLabel(activeFolder)}
+                </h3>
+                <p className="text-sm text-gray-400 mb-4">
+                  {activeFolder === 'cover-photos' && 'Min 7, Max 20 photos for header slideshow'}
+                  {activeFolder === 'wall-section' && 'Min 10, Max 40 photos for wall marquee'}
+                  {activeFolder === 'main-gallery' && 'Upload photos to the main gallery'}
+                </p>
+
+                <div className="space-y-4">
+                  <Input
+                    type="file"
+                    multiple
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleFileSelect}
+                    className="bg-gray-700 border-gray-600 text-white"
+                  />
+
+                  {previewUrls.length > 0 && (
+                    <div className="grid grid-cols-4 md:grid-cols-6 gap-2">
+                      {previewUrls.map((url, idx) => (
+                        <div key={idx} className="relative aspect-square rounded-lg overflow-hidden">
+                          <img src={url} alt={`Preview ${idx}`} className="w-full h-full object-cover" />
+                        </div>
+                      ))}
                     </div>
                   )}
 
                   <Button
-                    onClick={handleWallUpload}
-                    disabled={uploadingWall || !wallSelectedFile}
-                    className="w-full bg-gold hover:bg-gold/90 text-white font-body font-medium py-6 text-lg"
-                    data-testid="wall-upload-button"
+                    onClick={handleUpload}
+                    disabled={uploading || selectedFiles.length === 0}
+                    className="bg-gray-600 hover:bg-gray-500 text-white"
                   >
-                    {uploadingWall ? (
+                    {uploading ? (
                       <>
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                         Uploading...
                       </>
                     ) : (
                       <>
-                        <FiUpload className="mr-2" /> Upload to Wall
+                        <FiUpload className="mr-2" /> Upload {selectedFiles.length} Photo(s)
                       </>
                     )}
                   </Button>
                 </div>
               </Card>
+            )}
 
-              <h2 className="text-3xl font-heading text-foreground mb-6">
-                Wall Display Photos ({wallPhotos.length})
-              </h2>
-              {wallPhotos.length === 0 ? (
-                <Card className="p-12 text-center shadow-gold-soft">
-                  <p className="text-foreground/60 font-body">
-                    No photos on the wall display yet. Upload your best showcase photos above!
-                  </p>
+            {/* Photos Grid */}
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-4">
+                Photos ({photos.length})
+              </h3>
+              
+              {photos.length === 0 ? (
+                <Card className="bg-gray-800 border-gray-700 p-12 text-center">
+                  <FiImage className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                  <p className="text-gray-400">No photos in this folder yet</p>
                 </Card>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {wallPhotos.map((photo) => (
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                  {photos.map((photo, index) => (
                     <motion.div
                       key={photo.photo_id}
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.3 }}
+                      className="group relative aspect-square rounded-lg overflow-hidden bg-gray-800"
                     >
-                      <Card className="overflow-hidden shadow-gold-soft hover:shadow-xl transition-all group">
-                        <div className="relative">
-                          <img
-                            src={photo.image_data}
-                            alt={photo.filename}
-                            className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-500"
-                          />
-                        </div>
-                        <div className="p-4">
-                          <p className="text-sm font-body text-foreground/80">
-                            {new Date(photo.upload_timestamp).toLocaleDateString()}
-                          </p>
-                          <p className="text-sm font-body text-foreground/60 mt-1">
-                            {photo.filename}
-                          </p>
-                        </div>
-                      </Card>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'background' && (
-            <div>
-              {/* Background Image Upload Card */}
-              <Card className="p-8 mb-12 shadow-gold-soft border-warmgrey">
-                <h2 className="text-2xl font-heading text-foreground mb-6">Upload Header Background Images</h2>
-                <p className="text-foreground/60 font-body mb-4">
-                  These images will appear as a slideshow in the header section. Each image shows for 4 seconds with fade transitions.
-                </p>
-                <div className="space-y-6">
-                  <div>
-                    <Label htmlFor="bg-photo" className="font-body text-foreground mb-2 block">
-                      Select Background Image
-                    </Label>
-                    <Input
-                      id="bg-photo"
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      onChange={handleBgFileChange}
-                      disabled={uploadingBg}
-                      className="cursor-pointer"
-                      data-testid="bg-file-input"
-                    />
-                    <p className="text-sm text-foreground/60 font-body mt-1">
-                      JPEG, PNG, or WebP format. Max 10MB. Landscape orientation recommended.
-                    </p>
-                  </div>
-
-                  {bgPreviewUrl && (
-                    <div className="rounded-lg overflow-hidden border border-warmgrey">
                       <img
-                        src={bgPreviewUrl}
-                        alt="Preview"
-                        className="w-full h-64 object-cover"
+                        src={photo.thumbnail_url || photo.original_url}
+                        alt={photo.filename}
+                        className="w-full h-full object-cover cursor-pointer"
+                        onClick={() => {
+                          setLightboxIndex(index);
+                          setLightboxOpen(true);
+                        }}
+                        loading="lazy"
                       />
-                    </div>
-                  )}
-
-                  <Button
-                    onClick={handleBgUpload}
-                    disabled={uploadingBg || !bgSelectedFile}
-                    className="w-full bg-gold hover:bg-gold/90 text-white font-body font-medium py-6 text-lg"
-                    data-testid="bg-upload-button"
-                  >
-                    {uploadingBg ? (
-                      <>
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                        Uploading...
-                      </>
-                    ) : (
-                      <>
-                        <FiUpload className="mr-2" /> Upload Background Image
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </Card>
-
-              <h2 className="text-3xl font-heading text-foreground mb-6">
-                Header Background Images ({backgroundImages.length})
-              </h2>
-              {backgroundImages.length === 0 ? (
-                <Card className="p-12 text-center shadow-gold-soft">
-                  <p className="text-foreground/60 font-body">
-                    No background images yet. Upload images above to create a beautiful header slideshow!
-                  </p>
-                </Card>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {backgroundImages.map((image) => (
-                    <motion.div
-                      key={image.photo_id}
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <Card className="overflow-hidden shadow-gold-soft hover:shadow-xl transition-all group">
-                        <div className="relative">
-                          <img
-                            src={image.image_data}
-                            alt={image.filename}
-                            className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-500"
-                          />
-                        </div>
-                        <div className="p-4">
-                          <p className="text-sm font-body text-foreground/80">
-                            {new Date(image.upload_timestamp).toLocaleDateString()}
-                          </p>
-                          <p className="text-sm font-body text-foreground/60 mt-1">
-                            {image.filename}
-                          </p>
-                        </div>
-                      </Card>
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => {
+                            setLightboxIndex(index);
+                            setLightboxOpen(true);
+                          }}
+                          className="p-2 bg-white/20 rounded-full hover:bg-white/30"
+                          title="View"
+                        >
+                          <FiEye className="w-4 h-4 text-white" />
+                        </button>
+                        <button
+                          onClick={() => handleDeletePhoto(photo.photo_id)}
+                          className="p-2 bg-red-500/80 rounded-full hover:bg-red-600"
+                          title="Delete"
+                        >
+                          <FiTrash2 className="w-4 h-4 text-white" />
+                        </button>
+                      </div>
                     </motion.div>
                   ))}
                 </div>
               )}
             </div>
-          )}
-
-          {activeTab === 'settings' && (
-            <Settings user={user} />
-          )}
-        </motion.div>
+          </motion.div>
+        )}
       </div>
+
+      {/* Lightbox */}
+      <AnimatePresence>
+        {lightboxOpen && photos.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center"
+            onClick={() => setLightboxOpen(false)}
+          >
+            <button
+              onClick={() => setLightboxOpen(false)}
+              className="absolute top-4 right-4 text-white/70 hover:text-white"
+            >
+              <FiX className="w-8 h-8" />
+            </button>
+            
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setLightboxIndex((prev) => (prev - 1 + photos.length) % photos.length);
+              }}
+              className="absolute left-4 text-white/70 hover:text-white p-2"
+            >
+              <FiChevronLeft className="w-8 h-8" />
+            </button>
+            
+            <img
+              src={photos[lightboxIndex]?.medium_url || photos[lightboxIndex]?.original_url}
+              alt="Preview"
+              className="max-h-[90vh] max-w-[90vw] object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+            
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setLightboxIndex((prev) => (prev + 1) % photos.length);
+              }}
+              className="absolute right-4 text-white/70 hover:text-white p-2"
+            >
+              <FiChevronRight className="w-8 h-8" />
+            </button>
+            
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-4">
+              <span className="text-white/70">
+                {lightboxIndex + 1} / {photos.length}
+              </span>
+              <a
+                href={photos[lightboxIndex]?.original_url}
+                download
+                onClick={(e) => e.stopPropagation()}
+                className="text-white/70 hover:text-white"
+              >
+                <FiDownload className="w-5 h-5" />
+              </a>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeletePhoto(photos[lightboxIndex]?.photo_id);
+                  setLightboxOpen(false);
+                }}
+                className="text-red-400 hover:text-red-300"
+              >
+                <FiTrash2 className="w-5 h-5" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
