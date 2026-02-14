@@ -544,11 +544,60 @@ async def list_event_sections(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to list sections: {str(e)}")
 
+@api_router.delete("/events/{event_id}/sections/{section_name}")
+async def delete_event_section(
+    event_id: str,
+    section_name: str,
+    user: dict = Depends(get_current_user_from_header)
+):
+    """Delete a custom section folder and all its photos"""
+    event = await db.events.find_one({"event_id": event_id}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    if user.get("role") != "admin" and event["photographer_id"] != user["user_id"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Don't allow deleting default folders
+    default_folders = {'cover-photos', 'wall-section', 'main-gallery'}
+    if section_name in default_folders:
+        raise HTTPException(status_code=400, detail="Cannot delete default folders")
+    
+    # Delete S3 folder
+    try:
+        success = await asyncio.to_thread(
+            s3_service.delete_section_folder,
+            event["photographer_id"],
+            event_id,
+            section_name
+        )
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to delete section folder")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"S3 error: {str(e)}")
+    
+    # Remove section from event document
+    await db.events.update_one(
+        {"event_id": event_id},
+        {
+            "$pull": {"sections": section_name},
+            "$set": {"updated_at": datetime.now(timezone.utc)}
+        }
+    )
+    
+    # Delete photo records from MongoDB
+    await db.event_photos.delete_many({
+        "event_id": event_id,
+        "folder_type": section_name
+    })
+    
+    return {"message": f"Section '{section_name}' deleted successfully"}
+
 @api_router.post("/events/{event_id}/photos/upload")
 async def upload_event_photo(
     event_id: str,
-    folder_type: str = Form(...),  # cover-photos, wall-section, main-gallery
-    section_name: Optional[str] = Form(None),  # For main-gallery sections
+    folder_type: str = Form(...),  # cover-photos, wall-section, main-gallery, or custom section
+    section_name: Optional[str] = Form(None),  # Deprecated - use folder_type directly
     file: UploadFile = File(...),
     user: dict = Depends(get_current_user_from_header)
 ):
