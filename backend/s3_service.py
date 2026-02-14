@@ -99,7 +99,7 @@ class S3Service:
         filename: str,
         photographer_id: str,
         event_id: str,
-        folder_type: str,  # cover-photos, wall-section, main-gallery
+        folder_type: str,  # cover-photos, wall-section, main-gallery, or custom section name
         section_name: Optional[str] = None
     ) -> Optional[Dict]:
         """
@@ -114,11 +114,8 @@ class S3Service:
             clean_filename = filename.replace(' ', '_')
             unique_filename = f"{unique_id}_{clean_filename}"
             
-            # Determine the S3 path
-            if folder_type == "main-gallery" and section_name:
-                base_path = f"photographers/{photographer_id}/events/{event_id}/main-gallery/sections/{section_name}"
-            else:
-                base_path = f"photographers/{photographer_id}/events/{event_id}/{folder_type}"
+            # Determine the S3 path - all folders are at the same level
+            base_path = f"photographers/{photographer_id}/events/{event_id}/{folder_type}"
             
             # Upload original
             original_key = f"{base_path}/{unique_filename}"
