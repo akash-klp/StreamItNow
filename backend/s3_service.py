@@ -11,6 +11,11 @@ from typing import Optional, List, Dict
 from PIL import Image
 import io
 import logging
+from dotenv import load_dotenv
+from pathlib import Path
+
+# Load environment variables
+load_dotenv(Path(__file__).parent / '.env', override=True)
 
 logger = logging.getLogger(__name__)
 
