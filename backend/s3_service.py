@@ -272,9 +272,10 @@ class S3Service:
             return []
 
     def list_sections(self, photographer_id: str, event_id: str) -> List[str]:
-        """List all custom sections in main-gallery"""
+        """List all custom section folders (excluding default folders)"""
         try:
-            prefix = f"photographers/{photographer_id}/events/{event_id}/main-gallery/sections/"
+            prefix = f"photographers/{photographer_id}/events/{event_id}/"
+            default_folders = {'cover-photos', 'wall-section', 'main-gallery'}
             
             response = self.s3_client.list_objects_v2(
                 Bucket=self.bucket_name,
@@ -285,15 +286,42 @@ class S3Service:
             sections = []
             if "CommonPrefixes" in response:
                 for prefix_obj in response["CommonPrefixes"]:
-                    section = prefix_obj["Prefix"].rstrip('/').split('/')[-1]
-                    if section:
-                        sections.append(section)
+                    folder = prefix_obj["Prefix"].rstrip('/').split('/')[-1]
+                    if folder and folder not in default_folders:
+                        sections.append(folder)
             
             return sections
             
         except Exception as e:
             logger.error(f"Error listing sections: {e}")
             return []
+
+    def delete_section_folder(self, photographer_id: str, event_id: str, section_name: str) -> bool:
+        """Delete a custom section folder and all its contents"""
+        try:
+            prefix = f"photographers/{photographer_id}/events/{event_id}/{section_name}/"
+            
+            # List all objects with this prefix
+            response = self.s3_client.list_objects_v2(
+                Bucket=self.bucket_name,
+                Prefix=prefix
+            )
+            
+            if "Contents" in response:
+                objects_to_delete = [{"Key": obj["Key"]} for obj in response["Contents"]]
+                
+                if objects_to_delete:
+                    self.s3_client.delete_objects(
+                        Bucket=self.bucket_name,
+                        Delete={"Objects": objects_to_delete}
+                    )
+            
+            logger.info(f"Deleted section folder: {section_name}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error deleting section folder: {e}")
+            return False
 
     def delete_image(self, key: str) -> bool:
         """Delete an image and its variants from S3"""
