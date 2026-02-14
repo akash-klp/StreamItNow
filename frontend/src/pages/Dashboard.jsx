@@ -98,6 +98,7 @@ const Dashboard = ({ user: initialUser }) => {
   const fetchSections = useCallback(async (eventId) => {
     try {
       const response = await axios.get(`${BACKEND_URL}/api/events/${eventId}/sections`, getAuthHeaders());
+      console.log('Fetched sections:', response.data.sections);
       setSections(response.data.sections || []);
     } catch (error) {
       console.error('Failed to fetch sections:', error);
