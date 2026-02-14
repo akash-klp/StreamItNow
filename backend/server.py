@@ -783,7 +783,7 @@ async def get_public_event(event_slug: str):
     if event.get("status") != "active":
         raise HTTPException(status_code=403, detail="This event is not available")
     
-    # Get photos from MongoDB
+    # Get photos from MongoDB - all folders are at the same level now
     cover_photos = await db.event_photos.find(
         {"event_id": event["event_id"], "folder_type": "cover-photos"},
         {"_id": 0, "s3_key": 0}
@@ -794,17 +794,17 @@ async def get_public_event(event_slug: str):
         {"_id": 0, "s3_key": 0}
     ).sort("created_at", -1).to_list(40)
     
-    # Get main gallery photos (direct and from sections)
+    # Get main gallery photos
     main_gallery = await db.event_photos.find(
-        {"event_id": event["event_id"], "folder_type": "main-gallery", "section_name": None},
+        {"event_id": event["event_id"], "folder_type": "main-gallery"},
         {"_id": 0, "s3_key": 0}
     ).sort("created_at", -1).to_list(1000)
     
-    # Get sections with their photos
+    # Get custom sections with their photos (sections are now separate folders)
     sections_data = {}
     for section in event.get("sections", []):
         section_photos = await db.event_photos.find(
-            {"event_id": event["event_id"], "folder_type": "main-gallery", "section_name": section},
+            {"event_id": event["event_id"], "folder_type": section},
             {"_id": 0, "s3_key": 0}
         ).sort("created_at", -1).to_list(1000)
         sections_data[section] = section_photos
