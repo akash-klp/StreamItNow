@@ -475,6 +475,337 @@ async def update_event_status(
     
     return {"message": f"Event status updated to {request.status}"}
 
+# ==================== S3 PHOTO UPLOAD ENDPOINTS ====================
+
+@api_router.post("/events/{event_id}/sections")
+async def create_event_section(
+    event_id: str,
+    request: CreateSectionRequest,
+    user: dict = Depends(get_current_user_from_header)
+):
+    """Create a custom section in the main gallery"""
+    event = await db.events.find_one({"event_id": event_id}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    if user.get("role") != "admin" and event["photographer_id"] != user["user_id"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    section_name = request.section_name.lower().replace(' ', '-')
+    
+    # Create S3 folder for section
+    try:
+        success = await asyncio.to_thread(
+            s3_service.create_section_folder,
+            user["user_id"],
+            event_id,
+            section_name
+        )
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to create section folder")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"S3 error: {str(e)}")
+    
+    # Update event with new section
+    await db.events.update_one(
+        {"event_id": event_id},
+        {
+            "$addToSet": {"sections": section_name},
+            "$set": {"updated_at": datetime.now(timezone.utc)}
+        }
+    )
+    
+    return {"message": f"Section '{section_name}' created successfully", "section_name": section_name}
+
+@api_router.get("/events/{event_id}/sections")
+async def list_event_sections(
+    event_id: str,
+    user: dict = Depends(get_current_user_from_header)
+):
+    """List all sections in an event's main gallery"""
+    event = await db.events.find_one({"event_id": event_id}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    if user.get("role") != "admin" and event["photographer_id"] != user["user_id"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Get sections from S3
+    try:
+        sections = await asyncio.to_thread(
+            s3_service.list_sections,
+            event["photographer_id"],
+            event_id
+        )
+        return {"sections": sections}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list sections: {str(e)}")
+
+@api_router.post("/events/{event_id}/photos/upload")
+async def upload_event_photo(
+    event_id: str,
+    folder_type: str = Form(...),  # cover-photos, wall-section, main-gallery
+    section_name: Optional[str] = Form(None),  # For main-gallery sections
+    file: UploadFile = File(...),
+    user: dict = Depends(get_current_user_from_header)
+):
+    """Upload a photo to an event folder in S3"""
+    event = await db.events.find_one({"event_id": event_id}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    if user.get("role") != "admin" and event["photographer_id"] != user["user_id"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Validate folder type
+    valid_folders = ["cover-photos", "wall-section", "main-gallery"]
+    if folder_type not in valid_folders:
+        raise HTTPException(status_code=400, detail=f"Invalid folder type. Must be one of: {valid_folders}")
+    
+    # Validate file type
+    allowed_types = {"image/jpeg", "image/png", "image/webp"}
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Invalid file type. Must be JPEG, PNG, or WebP")
+    
+    # Read file content
+    content = await file.read()
+    
+    # Validate file size (max 50MB)
+    max_size = 50 * 1024 * 1024
+    if len(content) > max_size:
+        raise HTTPException(status_code=413, detail="File too large. Max 50MB")
+    
+    # Check photo limits
+    try:
+        counts = await asyncio.to_thread(
+            s3_service.get_event_photo_counts,
+            event["photographer_id"],
+            event_id
+        )
+        
+        if folder_type == "cover-photos" and counts["cover_photos"] >= 20:
+            raise HTTPException(status_code=400, detail="Maximum 20 cover photos allowed")
+        elif folder_type == "wall-section" and counts["wall_section"] >= 40:
+            raise HTTPException(status_code=400, detail="Maximum 40 wall photos allowed")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning(f"Could not check photo counts: {e}")
+    
+    # Upload to S3
+    try:
+        result = await asyncio.to_thread(
+            s3_service.upload_image,
+            content,
+            file.filename,
+            event["photographer_id"],
+            event_id,
+            folder_type,
+            section_name
+        )
+        
+        if not result:
+            raise HTTPException(status_code=500, detail="Failed to upload image")
+        
+        # Store photo metadata in MongoDB
+        photo_doc = {
+            "photo_id": str(uuid.uuid4()),
+            "event_id": event_id,
+            "photographer_id": event["photographer_id"],
+            "folder_type": folder_type,
+            "section_name": section_name,
+            "filename": result["filename"],
+            "original_url": result["original_url"],
+            "thumbnail_url": result["thumbnail_url"],
+            "medium_url": result["medium_url"],
+            "s3_key": result["original_key"],
+            "size": result["size"],
+            "created_at": datetime.now(timezone.utc)
+        }
+        
+        await db.event_photos.insert_one(photo_doc)
+        
+        return {
+            "photo_id": photo_doc["photo_id"],
+            "original_url": result["original_url"],
+            "thumbnail_url": result["thumbnail_url"],
+            "medium_url": result["medium_url"],
+            "message": "Photo uploaded successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+@api_router.get("/events/{event_id}/photos")
+async def list_event_photos(
+    event_id: str,
+    folder_type: Optional[str] = None,
+    section_name: Optional[str] = None,
+    user: dict = Depends(get_current_user_from_header)
+):
+    """List photos in an event (from MongoDB metadata)"""
+    event = await db.events.find_one({"event_id": event_id}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    if user.get("role") != "admin" and event["photographer_id"] != user["user_id"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Build query
+    query = {"event_id": event_id}
+    if folder_type:
+        query["folder_type"] = folder_type
+    if section_name:
+        query["section_name"] = section_name
+    
+    photos = await db.event_photos.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    
+    return {"photos": photos, "count": len(photos)}
+
+@api_router.delete("/events/{event_id}/photos/{photo_id}")
+async def delete_event_photo(
+    event_id: str,
+    photo_id: str,
+    user: dict = Depends(get_current_user_from_header)
+):
+    """Delete a photo from an event"""
+    event = await db.events.find_one({"event_id": event_id}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    if user.get("role") != "admin" and event["photographer_id"] != user["user_id"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    photo = await db.event_photos.find_one({"photo_id": photo_id, "event_id": event_id}, {"_id": 0})
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    
+    # Delete from S3
+    try:
+        await asyncio.to_thread(s3_service.delete_image, photo["s3_key"])
+    except Exception as e:
+        logger.error(f"Failed to delete from S3: {e}")
+    
+    # Delete from MongoDB
+    await db.event_photos.delete_one({"photo_id": photo_id})
+    
+    return {"message": "Photo deleted successfully"}
+
+@api_router.get("/events/{event_id}/photo-counts")
+async def get_event_photo_counts(
+    event_id: str,
+    user: dict = Depends(get_current_user_from_header)
+):
+    """Get photo counts for each folder in an event"""
+    event = await db.events.find_one({"event_id": event_id}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    if user.get("role") != "admin" and event["photographer_id"] != user["user_id"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    try:
+        counts = await asyncio.to_thread(
+            s3_service.get_event_photo_counts,
+            event["photographer_id"],
+            event_id
+        )
+        return counts
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get photo counts: {str(e)}")
+
+# ==================== PUBLIC EVENT PAGE (GUEST ACCESS) ====================
+
+@api_router.get("/public/event/{event_slug}")
+async def get_public_event(event_slug: str):
+    """Get event data for public guest view (no auth required)"""
+    event = await db.events.find_one({"event_slug": event_slug}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    if event.get("status") != "active":
+        raise HTTPException(status_code=403, detail="This event is not available")
+    
+    # Get photos from MongoDB
+    cover_photos = await db.event_photos.find(
+        {"event_id": event["event_id"], "folder_type": "cover-photos"},
+        {"_id": 0, "s3_key": 0}
+    ).sort("created_at", -1).to_list(20)
+    
+    wall_photos = await db.event_photos.find(
+        {"event_id": event["event_id"], "folder_type": "wall-section"},
+        {"_id": 0, "s3_key": 0}
+    ).sort("created_at", -1).to_list(40)
+    
+    # Get main gallery photos (direct and from sections)
+    main_gallery = await db.event_photos.find(
+        {"event_id": event["event_id"], "folder_type": "main-gallery", "section_name": None},
+        {"_id": 0, "s3_key": 0}
+    ).sort("created_at", -1).to_list(1000)
+    
+    # Get sections with their photos
+    sections_data = {}
+    for section in event.get("sections", []):
+        section_photos = await db.event_photos.find(
+            {"event_id": event["event_id"], "folder_type": "main-gallery", "section_name": section},
+            {"_id": 0, "s3_key": 0}
+        ).sort("created_at", -1).to_list(1000)
+        sections_data[section] = section_photos
+    
+    return {
+        "event_name": event["event_name"],
+        "bride_name": event.get("bride_name"),
+        "groom_name": event.get("groom_name"),
+        "event_date": event.get("event_date"),
+        "venue": event.get("venue"),
+        "photographer_name": event["photographer_name"],
+        "cover_photos": cover_photos,
+        "wall_photos": wall_photos,
+        "main_gallery": main_gallery,
+        "sections": sections_data
+    }
+
+@api_router.get("/public/event/{event_slug}/download/{photo_id}")
+async def download_photo(event_slug: str, photo_id: str):
+    """Generate presigned URL for photo download"""
+    event = await db.events.find_one({"event_slug": event_slug}, {"_id": 0})
+    if not event or event.get("status") != "active":
+        raise HTTPException(status_code=404, detail="Event not found or not available")
+    
+    photo = await db.event_photos.find_one(
+        {"photo_id": photo_id, "event_id": event["event_id"]},
+        {"_id": 0}
+    )
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    
+    # Generate presigned URL for download
+    try:
+        download_url = await asyncio.to_thread(
+            s3_service.generate_presigned_url,
+            photo["s3_key"],
+            3600  # 1 hour expiration
+        )
+        return {"download_url": download_url, "filename": photo["filename"]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Failed to generate download URL")
+
+# ==================== S3 CONNECTION TEST ====================
+
+@api_router.get("/admin/test-s3")
+async def test_s3_connection(admin: dict = Depends(get_admin_user)):
+    """Test S3 connection (admin only)"""
+    try:
+        success = await asyncio.to_thread(s3_service.test_connection)
+        if success:
+            return {"status": "connected", "bucket": s3_service.bucket_name}
+        else:
+            return {"status": "failed", "message": "Could not connect to S3"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 # ==================== PUBLIC/SETTINGS ENDPOINTS ====================
 
 @api_router.get("/settings")
