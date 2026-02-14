@@ -274,6 +274,26 @@ class CreateEventRequest(BaseModel):
 class UpdateEventStatusRequest(BaseModel):
     status: str  # active, pending, completed, cancelled
 
+class CreateSectionRequest(BaseModel):
+    section_name: str
+
+def generate_unique_slug(length: int = 8) -> str:
+    """Generate a random unique slug for event URL"""
+    chars = string.ascii_lowercase + string.digits
+    return ''.join(random.choices(chars, k=length))
+
+def generate_qr_code_base64(url: str) -> str:
+    """Generate QR code as base64 image"""
+    qr = qrcode.QRCode(version=1, box_size=10, border=5)
+    qr.add_data(url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    buffer = io.BytesIO()
+    img.save(buffer, format='PNG')
+    buffer.seek(0)
+    return f"data:image/png;base64,{base64.b64encode(buffer.getvalue()).decode()}"
+
 @api_router.post("/events")
 async def create_event(
     request: CreateEventRequest,
@@ -284,10 +304,19 @@ async def create_event(
         raise HTTPException(status_code=403, detail="Only photographers can create events")
     
     event_id = str(uuid.uuid4())
+    event_slug = generate_unique_slug()
     status = "active" if user.get("role") == "admin" else "pending"
+    
+    # Generate event URL and QR code
+    # Note: Replace with your actual domain in production
+    event_url = f"/event/{event_slug}"
+    qr_code = generate_qr_code_base64(event_url)
     
     event_doc = {
         "event_id": event_id,
+        "event_slug": event_slug,
+        "event_url": event_url,
+        "qr_code": qr_code,
         "event_name": request.event_name,
         "bride_name": request.bride_name,
         "groom_name": request.groom_name,
@@ -298,14 +327,39 @@ async def create_event(
         "photographer_name": user["name"],
         "photographer_email": user["email"],
         "status": status,
+        "sections": [],  # Custom sections created by photographer
+        "photo_counts": {
+            "cover_photos": 0,
+            "wall_section": 0,
+            "main_gallery": 0
+        },
         "created_at": datetime.now(timezone.utc),
         "updated_at": datetime.now(timezone.utc)
     }
     
+    # Create S3 folder structure for this event
+    try:
+        s3_success = await asyncio.to_thread(
+            s3_service.create_folder_structure,
+            user["user_id"],
+            event_id
+        )
+        if not s3_success:
+            logger.warning(f"Failed to create S3 folder structure for event {event_id}")
+    except Exception as e:
+        logger.error(f"S3 folder creation error: {e}")
+    
     await db.events.insert_one(event_doc)
     
     message = "Event created and is active" if status == "active" else "Event created and pending admin approval"
-    return {"event_id": event_id, "status": status, "message": message}
+    return {
+        "event_id": event_id,
+        "event_slug": event_slug,
+        "event_url": event_url,
+        "qr_code": qr_code,
+        "status": status,
+        "message": message
+    }
 
 @api_router.get("/events")
 async def list_events(user: dict = Depends(get_current_user_from_header)):
