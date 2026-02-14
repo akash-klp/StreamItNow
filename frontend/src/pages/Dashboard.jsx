@@ -143,11 +143,18 @@ const Dashboard = ({ user: initialUser }) => {
         { section_name: sectionToCreate },
         getAuthHeaders()
       );
-      toast.success(`✅ Section "${response.data.section_name}" created successfully in S3!`, {
+      toast.success(`✅ Section "${response.data.section_name}" created successfully!`, {
         duration: 4000
       });
-      // Refresh sections list
-      await fetchSections(selectedEvent.event_id);
+      
+      // Force refresh sections list
+      const sectionsResponse = await axios.get(
+        `${BACKEND_URL}/api/events/${selectedEvent.event_id}/sections`,
+        getAuthHeaders()
+      );
+      console.log('Refreshed sections after create:', sectionsResponse.data.sections);
+      setSections(sectionsResponse.data.sections || []);
+      
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to create section');
     } finally {
