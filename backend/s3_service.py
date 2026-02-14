@@ -235,10 +235,8 @@ class S3Service:
     ) -> List[Dict]:
         """List all images in a specific folder"""
         try:
-            if folder_type == "main-gallery" and section_name:
-                prefix = f"photographers/{photographer_id}/events/{event_id}/main-gallery/sections/{section_name}/"
-            else:
-                prefix = f"photographers/{photographer_id}/events/{event_id}/{folder_type}/"
+            # All folders are at the same level now
+            prefix = f"photographers/{photographer_id}/events/{event_id}/{folder_type}/"
             
             response = self.s3_client.list_objects_v2(
                 Bucket=self.bucket_name,
