@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FiUsers, FiImage, FiCalendar, FiLogOut, FiCheck, FiX, 
-  FiUserPlus, FiTrash2, FiClock, FiActivity, FiEye
+  FiUserPlus, FiTrash2, FiClock, FiActivity, FiEye, FiAlertCircle,
+  FiCheckCircle, FiUserCheck, FiFolder
 } from 'react-icons/fi';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
@@ -30,6 +31,9 @@ const AdminDashboard = () => {
   const [newName, setNewName] = useState('');
   const [registering, setRegistering] = useState(false);
 
+  // S3 Status
+  const [s3Status, setS3Status] = useState(null);
+
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
@@ -41,6 +45,7 @@ const AdminDashboard = () => {
       setUser(parsedUser);
     }
     fetchData();
+    testS3Connection();
   }, [navigate]);
 
   const fetchData = async () => {
@@ -63,6 +68,15 @@ const AdminDashboard = () => {
   const getAuthHeaders = () => ({
     headers: { Authorization: `Bearer ${localStorage.getItem('session_token')}` }
   });
+
+  const testS3Connection = async () => {
+    try {
+      const response = await axios.get(`${BACKEND_URL}/api/admin/test-s3`, getAuthHeaders());
+      setS3Status(response.data);
+    } catch (error) {
+      setS3Status({ status: 'error', message: 'Failed to test S3' });
+    }
+  };
 
   const fetchStats = async () => {
     try {
@@ -127,6 +141,7 @@ const AdminDashboard = () => {
       setNewEmail('');
       setNewName('');
       fetchRegisteredEmails();
+      fetchStats();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to register photographer');
     } finally {
@@ -207,49 +222,70 @@ const AdminDashboard = () => {
 
   const getStatusBadge = (status) => {
     const badges = {
-      active: 'bg-green-100 text-green-800 border-green-200',
-      pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      inactive: 'bg-gray-100 text-gray-800 border-gray-200',
-      completed: 'bg-blue-100 text-blue-800 border-blue-200',
-      cancelled: 'bg-red-100 text-red-800 border-red-200'
+      active: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+      pending: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+      inactive: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30',
+      completed: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+      cancelled: 'bg-red-500/20 text-red-400 border-red-500/30'
     };
     return badges[status] || badges.pending;
   };
 
+  // Get active photographers with their event counts
+  const activePhotographers = photographers.filter(p => p.status === 'active');
+  const pendingPhotographers = photographers.filter(p => p.status === 'pending');
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold"></div>
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white" data-testid="admin-dashboard">
+    <div className="min-h-screen bg-black text-white" data-testid="admin-dashboard">
       {/* Header */}
-      <div className="border-b border-warmgrey glass-header sticky top-0 z-10">
+      <div className="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-20">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
             {user?.picture && (
               <img
                 src={user.picture}
                 alt={user.name}
-                className="w-10 h-10 rounded-full border-2 border-gold"
+                className="w-10 h-10 rounded-full border-2 border-zinc-700"
               />
             )}
             <div>
-              <h2 className="font-heading text-xl text-foreground">{user?.name}</h2>
-              <p className="text-sm text-foreground/60 font-body">Admin Dashboard</p>
+              <h2 className="font-semibold text-lg text-white">{user?.name}</h2>
+              <p className="text-sm text-zinc-400">Admin Dashboard</p>
             </div>
           </div>
-          <div className="flex gap-4">
-            <Button variant="outline" onClick={() => navigate('/')} className="font-body">
+          <div className="flex items-center gap-4">
+            {/* S3 Status Indicator */}
+            {s3Status && (
+              <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs ${
+                s3Status.status === 'connected' 
+                  ? 'bg-emerald-500/20 text-emerald-400' 
+                  : 'bg-red-500/20 text-red-400'
+              }`}>
+                <div className={`w-2 h-2 rounded-full ${
+                  s3Status.status === 'connected' ? 'bg-emerald-400' : 'bg-red-400'
+                }`}></div>
+                S3 {s3Status.status === 'connected' ? 'Connected' : 'Disconnected'}
+              </div>
+            )}
+            <Button
+              variant="outline"
+              onClick={() => navigate('/')}
+              className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white"
+            >
               <FiEye className="mr-2" /> View Site
             </Button>
             <Button
               variant="outline"
               onClick={handleLogout}
-              className="font-body"
+              className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white"
               data-testid="logout-button"
             >
               <FiLogOut className="mr-2" /> Logout
@@ -258,41 +294,42 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-12">
+      <div className="max-w-7xl mx-auto px-4 py-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <h1 className="text-4xl md:text-5xl font-heading italic text-foreground mb-2">
-            Admin Dashboard
-          </h1>
-          <p className="text-foreground/70 font-body mb-8">
-            Manage photographers and events
-          </p>
+          <h1 className="text-3xl font-bold text-white mb-2">Admin Control Panel</h1>
+          <p className="text-zinc-400 mb-8">Manage photographers, events, and platform settings</p>
 
           {/* Tab Navigation */}
-          <div className="flex space-x-1 mb-8 glass-panel p-1 rounded-lg">
+          <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
             {[
               { id: 'overview', label: 'Overview', icon: FiActivity },
-              { id: 'photographers', label: 'Photographers', icon: FiUsers },
-              { id: 'events', label: 'Events', icon: FiCalendar },
-              { id: 'register', label: 'Register New', icon: FiUserPlus }
+              { id: 'register', label: 'Register Photographer', icon: FiUserPlus },
+              { id: 'active', label: 'Active Photographers', icon: FiUserCheck, count: activePhotographers.length },
+              { id: 'approve-events', label: 'Approve Events', icon: FiCalendar, count: pendingEvents.length },
+              { id: 'approve-registrations', label: 'Approve Registrations', icon: FiUsers, count: pendingPhotographers.length + registeredEmails.length }
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md font-body transition-all ${
+                className={`flex items-center gap-2 px-4 py-3 rounded-lg whitespace-nowrap transition-all ${
                   activeTab === tab.id
-                    ? 'bg-gold text-white shadow-md'
-                    : 'text-foreground/70 hover:text-foreground hover:bg-white/50'
+                    ? 'bg-white text-black font-medium'
+                    : 'bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-white border border-zinc-800'
                 }`}
               >
                 <tab.icon className="w-4 h-4" />
                 {tab.label}
-                {tab.id === 'events' && pendingEvents.length > 0 && (
-                  <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
-                    {pendingEvents.length}
+                {tab.count > 0 && (
+                  <span className={`px-2 py-0.5 rounded-full text-xs ${
+                    activeTab === tab.id 
+                      ? 'bg-black text-white' 
+                      : 'bg-amber-500/20 text-amber-400'
+                  }`}>
+                    {tab.count}
                   </span>
                 )}
               </button>
@@ -302,502 +339,224 @@ const AdminDashboard = () => {
           {/* Overview Tab */}
           {activeTab === 'overview' && stats && (
             <div className="space-y-8">
-              {/* Stats Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card className="p-6 shadow-gold-soft">
+              {/* Main Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card className="bg-zinc-900 border-zinc-800 p-6">
                   <div className="flex items-center gap-4">
-                    <div className="p-3 bg-gold/10 rounded-lg">
-                      <FiUsers className="w-6 h-6 text-gold" />
+                    <div className="p-3 bg-blue-500/20 rounded-xl">
+                      <FiUsers className="w-6 h-6 text-blue-400" />
                     </div>
                     <div>
-                      <p className="text-sm text-foreground/60 font-body">Total Photographers</p>
-                      <p className="text-3xl font-heading text-foreground">{stats.total_photographers}</p>
+                      <p className="text-sm text-zinc-500">Total Photographers</p>
+                      <p className="text-3xl font-bold text-white">{stats.total_photographers}</p>
                     </div>
                   </div>
                 </Card>
 
-                <Card className="p-6 shadow-gold-soft">
+                <Card className="bg-zinc-900 border-zinc-800 p-6">
                   <div className="flex items-center gap-4">
-                    <div className="p-3 bg-green-100 rounded-lg">
-                      <FiCheck className="w-6 h-6 text-green-600" />
+                    <div className="p-3 bg-emerald-500/20 rounded-xl">
+                      <FiCheckCircle className="w-6 h-6 text-emerald-400" />
                     </div>
                     <div>
-                      <p className="text-sm text-foreground/60 font-body">Active Photographers</p>
-                      <p className="text-3xl font-heading text-green-600">{stats.active_photographers}</p>
+                      <p className="text-sm text-zinc-500">Active Photographers</p>
+                      <p className="text-3xl font-bold text-emerald-400">{stats.active_photographers}</p>
                     </div>
                   </div>
                 </Card>
 
-                <Card className="p-6 shadow-gold-soft">
+                <Card className="bg-zinc-900 border-zinc-800 p-6">
                   <div className="flex items-center gap-4">
-                    <div className="p-3 bg-yellow-100 rounded-lg">
-                      <FiClock className="w-6 h-6 text-yellow-600" />
+                    <div className="p-3 bg-amber-500/20 rounded-xl">
+                      <FiClock className="w-6 h-6 text-amber-400" />
                     </div>
                     <div>
-                      <p className="text-sm text-foreground/60 font-body">Pending Approval</p>
-                      <p className="text-3xl font-heading text-yellow-600">{stats.pending_photographers}</p>
+                      <p className="text-sm text-zinc-500">Pending Approvals</p>
+                      <p className="text-3xl font-bold text-amber-400">
+                        {stats.pending_photographers + stats.pending_events}
+                      </p>
                     </div>
                   </div>
                 </Card>
 
-                <Card className="p-6 shadow-gold-soft">
+                <Card className="bg-zinc-900 border-zinc-800 p-6">
                   <div className="flex items-center gap-4">
-                    <div className="p-3 bg-blue-100 rounded-lg">
-                      <FiImage className="w-6 h-6 text-blue-600" />
+                    <div className="p-3 bg-purple-500/20 rounded-xl">
+                      <FiCalendar className="w-6 h-6 text-purple-400" />
                     </div>
                     <div>
-                      <p className="text-sm text-foreground/60 font-body">Total Photos</p>
-                      <p className="text-3xl font-heading text-blue-600">{stats.total_photos}</p>
+                      <p className="text-sm text-zinc-500">Active Events</p>
+                      <p className="text-3xl font-bold text-purple-400">{stats.active_events}</p>
                     </div>
                   </div>
                 </Card>
               </div>
 
-              {/* Event Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card className="p-6 shadow-gold-soft">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-purple-100 rounded-lg">
-                      <FiCalendar className="w-6 h-6 text-purple-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-foreground/60 font-body">Total Events</p>
-                      <p className="text-3xl font-heading text-purple-600">{stats.total_events}</p>
-                    </div>
-                  </div>
-                </Card>
-
-                <Card className="p-6 shadow-gold-soft">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-green-100 rounded-lg">
-                      <FiCheck className="w-6 h-6 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-foreground/60 font-body">Active Events</p>
-                      <p className="text-3xl font-heading text-green-600">{stats.active_events}</p>
-                    </div>
-                  </div>
-                </Card>
-
-                <Card className="p-6 shadow-gold-soft">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-yellow-100 rounded-lg">
-                      <FiClock className="w-6 h-6 text-yellow-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-foreground/60 font-body">Pending Events</p>
-                      <p className="text-3xl font-heading text-yellow-600">{stats.pending_events}</p>
-                    </div>
-                  </div>
-                </Card>
-              </div>
-
-              {/* Pending Events Alert */}
-              {pendingEvents.length > 0 && (
-                <Card className="p-6 border-yellow-300 bg-yellow-50 shadow-gold-soft">
-                  <h3 className="text-lg font-heading text-yellow-800 mb-4 flex items-center gap-2">
-                    <FiClock className="w-5 h-5" />
-                    Events Awaiting Approval ({pendingEvents.length})
-                  </h3>
-                  <div className="space-y-3">
-                    {pendingEvents.slice(0, 3).map((event) => (
-                      <div key={event.event_id} className="flex justify-between items-center bg-white p-4 rounded-lg">
-                        <div>
-                          <p className="font-body font-medium">{event.event_name}</p>
-                          <p className="text-sm text-foreground/60">
-                            by {event.photographer_name} • {new Date(event.event_date).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => handleUpdateEventStatus(event.event_id, 'active')}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            <FiCheck className="mr-1" /> Approve
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleUpdateEventStatus(event.event_id, 'cancelled')}
-                            className="text-red-600 border-red-300 hover:bg-red-50"
-                          >
-                            <FiX className="mr-1" /> Reject
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  {pendingEvents.length > 3 && (
-                    <Button
-                      variant="outline"
-                      onClick={() => setActiveTab('events')}
-                      className="mt-4 w-full"
-                    >
-                      View All Pending Events
-                    </Button>
-                  )}
-                </Card>
-              )}
-            </div>
-          )}
-
-          {/* Photographers Tab */}
-          {activeTab === 'photographers' && (
-            <div className="space-y-6">
-              <Card className="overflow-hidden shadow-gold-soft">
-                <div className="p-6 border-b border-warmgrey">
-                  <h2 className="text-2xl font-heading text-foreground">
-                    All Photographers ({photographers.length})
-                  </h2>
-                </div>
-                
-                {photographers.length === 0 ? (
-                  <div className="p-12 text-center">
-                    <FiUsers className="w-12 h-12 text-foreground/30 mx-auto mb-4" />
-                    <p className="text-foreground/60 font-body">
-                      No photographers registered yet. Use the "Register New" tab to add photographers.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-cream">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-body font-semibold text-foreground/70 uppercase tracking-wider">
-                            Photographer
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-body font-semibold text-foreground/70 uppercase tracking-wider">
-                            Status
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-body font-semibold text-foreground/70 uppercase tracking-wider">
-                            Photos
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-body font-semibold text-foreground/70 uppercase tracking-wider">
-                            Events
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-body font-semibold text-foreground/70 uppercase tracking-wider">
-                            Joined
-                          </th>
-                          <th className="px-6 py-3 text-right text-xs font-body font-semibold text-foreground/70 uppercase tracking-wider">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-warmgrey">
-                        {photographers.map((photographer) => (
-                          <tr key={photographer.user_id} className="hover:bg-cream/50 transition-colors">
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center gap-3">
-                                {photographer.picture ? (
-                                  <img
-                                    src={photographer.picture}
-                                    alt={photographer.name}
-                                    className="w-10 h-10 rounded-full border border-warmgrey"
-                                  />
-                                ) : (
-                                  <div className="w-10 h-10 rounded-full bg-gold/20 flex items-center justify-center">
-                                    <FiUsers className="w-5 h-5 text-gold" />
-                                  </div>
-                                )}
-                                <div>
-                                  <p className="font-body font-medium text-foreground">{photographer.name}</p>
-                                  <p className="text-sm text-foreground/60">{photographer.email}</p>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-3 py-1 rounded-full text-xs font-body border ${getStatusBadge(photographer.status)}`}>
-                                {photographer.status}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap font-body text-foreground">
-                              {photographer.photo_count || 0}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap font-body text-foreground">
-                              {photographer.event_count || 0}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap font-body text-foreground/70">
-                              {photographer.created_at ? new Date(photographer.created_at).toLocaleDateString() : 'N/A'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right">
-                              <div className="flex gap-2 justify-end">
-                                {photographer.status !== 'active' && (
-                                  <Button
-                                    size="sm"
-                                    onClick={() => handleUpdatePhotographerStatus(photographer.user_id, 'active')}
-                                    className="bg-green-600 hover:bg-green-700"
-                                  >
-                                    <FiCheck className="w-4 h-4" />
-                                  </Button>
-                                )}
-                                {photographer.status === 'active' && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleUpdatePhotographerStatus(photographer.user_id, 'inactive')}
-                                    className="text-yellow-600 border-yellow-300"
-                                  >
-                                    <FiX className="w-4 h-4" />
-                                  </Button>
-                                )}
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleDeletePhotographer(photographer.user_id, photographer.name)}
-                                  className="text-red-600 border-red-300 hover:bg-red-50"
-                                >
-                                  <FiTrash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </Card>
-
-              {/* Registered Emails (pending signup) */}
-              {registeredEmails.length > 0 && (
-                <Card className="overflow-hidden shadow-gold-soft">
-                  <div className="p-6 border-b border-warmgrey">
-                    <h2 className="text-xl font-heading text-foreground">
-                      Pending Signups ({registeredEmails.length})
-                    </h2>
-                    <p className="text-sm text-foreground/60 font-body mt-1">
-                      These emails are registered but haven't logged in yet
-                    </p>
-                  </div>
-                  <div className="p-6">
+              {/* Quick Actions */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Pending Events Alert */}
+                {pendingEvents.length > 0 && (
+                  <Card className="bg-amber-500/10 border-amber-500/30 p-6">
+                    <h3 className="text-lg font-semibold text-amber-400 mb-4 flex items-center gap-2">
+                      <FiAlertCircle className="w-5 h-5" />
+                      {pendingEvents.length} Event(s) Awaiting Approval
+                    </h3>
                     <div className="space-y-3">
-                      {registeredEmails.map((reg) => (
-                        <div key={reg.registration_id} className="flex justify-between items-center bg-cream p-4 rounded-lg">
+                      {pendingEvents.slice(0, 3).map((event) => (
+                        <div key={event.event_id} className="flex justify-between items-center bg-zinc-900 p-3 rounded-lg">
                           <div>
-                            <p className="font-body font-medium">{reg.email}</p>
-                            {reg.name && <p className="text-sm text-foreground/60">{reg.name}</p>}
-                            <p className="text-xs text-foreground/40">
-                              Registered on {new Date(reg.created_at).toLocaleDateString()}
-                            </p>
+                            <p className="font-medium text-white">{event.event_name}</p>
+                            <p className="text-xs text-zinc-400">by {event.photographer_name}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => handleUpdateEventStatus(event.event_id, 'active')}
+                              className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                            >
+                              <FiCheck className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleUpdateEventStatus(event.event_id, 'cancelled')}
+                              className="border-red-500/50 text-red-400 hover:bg-red-500/20"
+                            >
+                              <FiX className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {pendingEvents.length > 3 && (
+                      <Button
+                        variant="outline"
+                        onClick={() => setActiveTab('approve-events')}
+                        className="mt-4 w-full border-amber-500/30 text-amber-400 hover:bg-amber-500/20"
+                      >
+                        View All Pending Events
+                      </Button>
+                    )}
+                  </Card>
+                )}
+
+                {/* Pending Registrations Alert */}
+                {(pendingPhotographers.length > 0 || registeredEmails.length > 0) && (
+                  <Card className="bg-blue-500/10 border-blue-500/30 p-6">
+                    <h3 className="text-lg font-semibold text-blue-400 mb-4 flex items-center gap-2">
+                      <FiUserPlus className="w-5 h-5" />
+                      {pendingPhotographers.length + registeredEmails.length} Registration(s) Pending
+                    </h3>
+                    <div className="space-y-3">
+                      {pendingPhotographers.slice(0, 2).map((photographer) => (
+                        <div key={photographer.user_id} className="flex justify-between items-center bg-zinc-900 p-3 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            {photographer.picture ? (
+                              <img src={photographer.picture} alt="" className="w-8 h-8 rounded-full" />
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center">
+                                <FiUsers className="w-4 h-4 text-zinc-400" />
+                              </div>
+                            )}
+                            <div>
+                              <p className="font-medium text-white">{photographer.name}</p>
+                              <p className="text-xs text-zinc-400">{photographer.email}</p>
+                            </div>
                           </div>
                           <Button
                             size="sm"
-                            variant="outline"
-                            onClick={() => handleRemoveRegistration(reg.email)}
-                            className="text-red-600 border-red-300 hover:bg-red-50"
+                            onClick={() => handleUpdatePhotographerStatus(photographer.user_id, 'active')}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white"
                           >
-                            <FiTrash2 className="w-4 h-4" />
+                            Approve
                           </Button>
                         </div>
                       ))}
                     </div>
-                  </div>
-                </Card>
-              )}
-            </div>
-          )}
-
-          {/* Events Tab */}
-          {activeTab === 'events' && (
-            <div className="space-y-6">
-              {/* Pending Events */}
-              {pendingEvents.length > 0 && (
-                <Card className="overflow-hidden shadow-gold-soft border-yellow-300">
-                  <div className="p-6 border-b border-yellow-300 bg-yellow-50">
-                    <h2 className="text-xl font-heading text-yellow-800 flex items-center gap-2">
-                      <FiClock className="w-5 h-5" />
-                      Pending Approval ({pendingEvents.length})
-                    </h2>
-                  </div>
-                  <div className="divide-y divide-warmgrey">
-                    {pendingEvents.map((event) => (
-                      <div key={event.event_id} className="p-6 hover:bg-cream/50 transition-colors">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h3 className="font-heading text-lg text-foreground">{event.event_name}</h3>
-                            <p className="text-sm text-foreground/60 font-body">
-                              {event.bride_name && event.groom_name 
-                                ? `${event.bride_name} & ${event.groom_name}` 
-                                : 'Couple names not set'}
-                            </p>
-                            <div className="mt-2 text-sm text-foreground/70 font-body">
-                              <p>📅 {new Date(event.event_date).toLocaleDateString()}</p>
-                              {event.venue && <p>📍 {event.venue}</p>}
-                              <p>📸 by {event.photographer_name}</p>
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button
-                              onClick={() => handleUpdateEventStatus(event.event_id, 'active')}
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              <FiCheck className="mr-1" /> Approve
-                            </Button>
-                            <Button
-                              variant="outline"
-                              onClick={() => handleUpdateEventStatus(event.event_id, 'cancelled')}
-                              className="text-red-600 border-red-300 hover:bg-red-50"
-                            >
-                              <FiX className="mr-1" /> Reject
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              )}
-
-              {/* All Events */}
-              <Card className="overflow-hidden shadow-gold-soft">
-                <div className="p-6 border-b border-warmgrey">
-                  <h2 className="text-xl font-heading text-foreground">
-                    All Events ({events.length})
-                  </h2>
-                </div>
-                
-                {events.length === 0 ? (
-                  <div className="p-12 text-center">
-                    <FiCalendar className="w-12 h-12 text-foreground/30 mx-auto mb-4" />
-                    <p className="text-foreground/60 font-body">No events created yet.</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-cream">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-body font-semibold text-foreground/70 uppercase tracking-wider">
-                            Event
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-body font-semibold text-foreground/70 uppercase tracking-wider">
-                            Photographer
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-body font-semibold text-foreground/70 uppercase tracking-wider">
-                            Date
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-body font-semibold text-foreground/70 uppercase tracking-wider">
-                            Status
-                          </th>
-                          <th className="px-6 py-3 text-right text-xs font-body font-semibold text-foreground/70 uppercase tracking-wider">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-warmgrey">
-                        {events.map((event) => (
-                          <tr key={event.event_id} className="hover:bg-cream/50 transition-colors">
-                            <td className="px-6 py-4">
-                              <p className="font-body font-medium text-foreground">{event.event_name}</p>
-                              {event.bride_name && event.groom_name && (
-                                <p className="text-sm text-foreground/60">
-                                  {event.bride_name} & {event.groom_name}
-                                </p>
-                              )}
-                            </td>
-                            <td className="px-6 py-4 font-body text-foreground/70">
-                              {event.photographer_name}
-                            </td>
-                            <td className="px-6 py-4 font-body text-foreground/70">
-                              {new Date(event.event_date).toLocaleDateString()}
-                            </td>
-                            <td className="px-6 py-4">
-                              <span className={`px-3 py-1 rounded-full text-xs font-body border ${getStatusBadge(event.status)}`}>
-                                {event.status}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              <div className="flex gap-2 justify-end">
-                                {event.status === 'pending' && (
-                                  <>
-                                    <Button
-                                      size="sm"
-                                      onClick={() => handleUpdateEventStatus(event.event_id, 'active')}
-                                      className="bg-green-600 hover:bg-green-700"
-                                    >
-                                      <FiCheck className="w-4 h-4" />
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => handleUpdateEventStatus(event.event_id, 'cancelled')}
-                                      className="text-red-600 border-red-300"
-                                    >
-                                      <FiX className="w-4 h-4" />
-                                    </Button>
-                                  </>
-                                )}
-                                {event.status === 'active' && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleUpdateEventStatus(event.event_id, 'completed')}
-                                    className="text-blue-600 border-blue-300"
-                                  >
-                                    Complete
-                                  </Button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => setActiveTab('approve-registrations')}
+                      className="mt-4 w-full border-blue-500/30 text-blue-400 hover:bg-blue-500/20"
+                    >
+                      View All Registrations
+                    </Button>
+                  </Card>
                 )}
+              </div>
+
+              {/* Platform Stats */}
+              <Card className="bg-zinc-900 border-zinc-800 p-6">
+                <h3 className="text-lg font-semibold text-white mb-4">Platform Statistics</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-zinc-800 rounded-lg p-4">
+                    <p className="text-zinc-400 text-sm">Total Events</p>
+                    <p className="text-2xl font-bold text-white">{stats.total_events}</p>
+                  </div>
+                  <div className="bg-zinc-800 rounded-lg p-4">
+                    <p className="text-zinc-400 text-sm">Active Events</p>
+                    <p className="text-2xl font-bold text-emerald-400">{stats.active_events}</p>
+                  </div>
+                  <div className="bg-zinc-800 rounded-lg p-4">
+                    <p className="text-zinc-400 text-sm">Pending Events</p>
+                    <p className="text-2xl font-bold text-amber-400">{stats.pending_events}</p>
+                  </div>
+                  <div className="bg-zinc-800 rounded-lg p-4">
+                    <p className="text-zinc-400 text-sm">Total Photos</p>
+                    <p className="text-2xl font-bold text-purple-400">{stats.total_photos}</p>
+                  </div>
+                </div>
               </Card>
             </div>
           )}
 
-          {/* Register New Tab */}
+          {/* Register New Photographer Tab */}
           {activeTab === 'register' && (
-            <div className="max-w-xl mx-auto">
-              <Card className="p-8 shadow-gold-soft">
-                <h2 className="text-2xl font-heading text-foreground mb-2">
-                  Register New Photographer
-                </h2>
-                <p className="text-foreground/60 font-body mb-6">
-                  Add a photographer's email to allow them to sign in. They will need to use Google login with this email.
-                </p>
+            <div className="max-w-xl">
+              <Card className="bg-zinc-900 border-zinc-800 p-8">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="p-3 bg-blue-500/20 rounded-xl">
+                    <FiUserPlus className="w-6 h-6 text-blue-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-semibold text-white">Register New Photographer</h2>
+                    <p className="text-sm text-zinc-400">Add photographer email to allow login</p>
+                  </div>
+                </div>
 
                 <form onSubmit={handleRegisterPhotographer} className="space-y-6">
                   <div>
-                    <Label htmlFor="email" className="font-body text-foreground mb-2 block">
-                      Email Address *
-                    </Label>
+                    <Label className="text-zinc-300 mb-2 block">Email Address *</Label>
                     <Input
-                      id="email"
                       type="email"
                       placeholder="photographer@example.com"
                       value={newEmail}
                       onChange={(e) => setNewEmail(e.target.value)}
                       required
                       disabled={registering}
+                      className="bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500"
                     />
                   </div>
 
                   <div>
-                    <Label htmlFor="name" className="font-body text-foreground mb-2 block">
-                      Name (Optional)
-                    </Label>
+                    <Label className="text-zinc-300 mb-2 block">Name (Optional)</Label>
                     <Input
-                      id="name"
                       type="text"
                       placeholder="John Doe"
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
                       disabled={registering}
+                      className="bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500"
                     />
                   </div>
 
                   <Button
                     type="submit"
                     disabled={registering || !newEmail}
-                    className="w-full bg-gold hover:bg-gold/90 text-white font-body font-medium py-6 text-lg"
+                    className="w-full bg-white text-black hover:bg-zinc-200 font-medium py-6"
                   >
                     {registering ? (
                       <>
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black mr-2"></div>
                         Registering...
                       </>
                     ) : (
@@ -807,19 +566,339 @@ const AdminDashboard = () => {
                     )}
                   </Button>
                 </form>
-              </Card>
 
-              {/* Info Card */}
-              <Card className="mt-6 p-6 bg-blue-50 border-blue-200">
-                <h3 className="font-heading text-blue-800 mb-2">How it works</h3>
-                <ol className="list-decimal list-inside space-y-2 text-sm text-blue-700 font-body">
-                  <li>Register the photographer's email here</li>
-                  <li>Share the login link with the photographer</li>
-                  <li>They sign in using Google with the registered email</li>
-                  <li>Their account starts with "pending" status</li>
-                  <li>You can activate them from the Photographers tab</li>
-                </ol>
+                {/* How it works */}
+                <div className="mt-8 pt-6 border-t border-zinc-800">
+                  <h4 className="text-sm font-medium text-zinc-300 mb-3">How it works:</h4>
+                  <ol className="list-decimal list-inside space-y-2 text-sm text-zinc-500">
+                    <li>Register the photographer's email here</li>
+                    <li>Share the login link with them</li>
+                    <li>They sign in with Google using the registered email</li>
+                    <li>Approve their account from "Approve Registrations"</li>
+                    <li>They can then create events (which need your approval)</li>
+                  </ol>
+                </div>
               </Card>
+            </div>
+          )}
+
+          {/* Active Photographers Tab */}
+          {activeTab === 'active' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-white">
+                  Active Photographers ({activePhotographers.length})
+                </h2>
+              </div>
+
+              {activePhotographers.length === 0 ? (
+                <Card className="bg-zinc-900 border-zinc-800 p-12 text-center">
+                  <FiUsers className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
+                  <p className="text-zinc-400">No active photographers yet</p>
+                </Card>
+              ) : (
+                <div className="grid gap-4">
+                  {activePhotographers.map((photographer) => (
+                    <Card key={photographer.user_id} className="bg-zinc-900 border-zinc-800 p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          {photographer.picture ? (
+                            <img
+                              src={photographer.picture}
+                              alt={photographer.name}
+                              className="w-12 h-12 rounded-full border border-zinc-700"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center">
+                              <FiUsers className="w-6 h-6 text-zinc-500" />
+                            </div>
+                          )}
+                          <div>
+                            <h3 className="font-semibold text-white">{photographer.name}</h3>
+                            <p className="text-sm text-zinc-400">{photographer.email}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-6">
+                          {/* Stats */}
+                          <div className="flex gap-4 text-center">
+                            <div className="px-4 py-2 bg-zinc-800 rounded-lg">
+                              <p className="text-lg font-bold text-purple-400">{photographer.event_count || 0}</p>
+                              <p className="text-xs text-zinc-500">Events</p>
+                            </div>
+                            <div className="px-4 py-2 bg-zinc-800 rounded-lg">
+                              <p className="text-lg font-bold text-blue-400">{photographer.photo_count || 0}</p>
+                              <p className="text-xs text-zinc-500">Photos</p>
+                            </div>
+                          </div>
+                          
+                          {/* Actions */}
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleUpdatePhotographerStatus(photographer.user_id, 'inactive')}
+                              className="border-amber-500/50 text-amber-400 hover:bg-amber-500/20"
+                            >
+                              Deactivate
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDeletePhotographer(photographer.user_id, photographer.name)}
+                              className="border-red-500/50 text-red-400 hover:bg-red-500/20"
+                            >
+                              <FiTrash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Approve Events Tab */}
+          {activeTab === 'approve-events' && (
+            <div className="space-y-6">
+              <h2 className="text-xl font-semibold text-white">
+                Event Approval Requests ({pendingEvents.length})
+              </h2>
+
+              {pendingEvents.length === 0 ? (
+                <Card className="bg-zinc-900 border-zinc-800 p-12 text-center">
+                  <FiCheckCircle className="w-12 h-12 text-emerald-500 mx-auto mb-4" />
+                  <p className="text-zinc-400">All events have been reviewed!</p>
+                </Card>
+              ) : (
+                <div className="space-y-4">
+                  {pendingEvents.map((event) => (
+                    <Card key={event.event_id} className="bg-zinc-900 border-zinc-800 p-6">
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="text-lg font-semibold text-white">{event.event_name}</h3>
+                            <span className={`px-2 py-0.5 rounded-full text-xs border ${getStatusBadge(event.status)}`}>
+                              {event.status}
+                            </span>
+                          </div>
+                          
+                          {event.bride_name && event.groom_name && (
+                            <p className="text-zinc-400 text-sm mb-1">
+                              💍 {event.bride_name} & {event.groom_name}
+                            </p>
+                          )}
+                          
+                          <div className="flex flex-wrap gap-4 text-sm text-zinc-500">
+                            <span>📅 {new Date(event.event_date).toLocaleDateString()}</span>
+                            {event.venue && <span>📍 {event.venue}</span>}
+                            <span>📸 by {event.photographer_name}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex gap-3">
+                          <Button
+                            onClick={() => handleUpdateEventStatus(event.event_id, 'active')}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                          >
+                            <FiCheck className="mr-2" /> Approve
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => handleUpdateEventStatus(event.event_id, 'cancelled')}
+                            className="border-red-500/50 text-red-400 hover:bg-red-500/20"
+                          >
+                            <FiX className="mr-2" /> Reject
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+
+              {/* All Events Section */}
+              <div className="mt-12">
+                <h3 className="text-lg font-semibold text-white mb-4">All Events ({events.length})</h3>
+                {events.length === 0 ? (
+                  <Card className="bg-zinc-900 border-zinc-800 p-8 text-center">
+                    <p className="text-zinc-400">No events created yet</p>
+                  </Card>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-zinc-800">
+                          <th className="text-left py-3 px-4 text-sm font-medium text-zinc-400">Event</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-zinc-400">Photographer</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-zinc-400">Date</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-zinc-400">Status</th>
+                          <th className="text-right py-3 px-4 text-sm font-medium text-zinc-400">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {events.map((event) => (
+                          <tr key={event.event_id} className="border-b border-zinc-800/50 hover:bg-zinc-900/50">
+                            <td className="py-4 px-4">
+                              <p className="font-medium text-white">{event.event_name}</p>
+                              {event.bride_name && event.groom_name && (
+                                <p className="text-xs text-zinc-500">{event.bride_name} & {event.groom_name}</p>
+                              )}
+                            </td>
+                            <td className="py-4 px-4 text-zinc-400">{event.photographer_name}</td>
+                            <td className="py-4 px-4 text-zinc-400">{new Date(event.event_date).toLocaleDateString()}</td>
+                            <td className="py-4 px-4">
+                              <span className={`px-2 py-1 rounded-full text-xs border ${getStatusBadge(event.status)}`}>
+                                {event.status}
+                              </span>
+                            </td>
+                            <td className="py-4 px-4 text-right">
+                              {event.status === 'pending' && (
+                                <div className="flex gap-2 justify-end">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleUpdateEventStatus(event.event_id, 'active')}
+                                    className="bg-emerald-600 hover:bg-emerald-500"
+                                  >
+                                    <FiCheck className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleUpdateEventStatus(event.event_id, 'cancelled')}
+                                    className="border-red-500/50 text-red-400"
+                                  >
+                                    <FiX className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              )}
+                              {event.status === 'active' && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleUpdateEventStatus(event.event_id, 'completed')}
+                                  className="border-blue-500/50 text-blue-400"
+                                >
+                                  Complete
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Approve Registrations Tab */}
+          {activeTab === 'approve-registrations' && (
+            <div className="space-y-8">
+              {/* Pending Photographer Approvals */}
+              <div>
+                <h2 className="text-xl font-semibold text-white mb-4">
+                  Photographers Awaiting Approval ({pendingPhotographers.length})
+                </h2>
+
+                {pendingPhotographers.length === 0 ? (
+                  <Card className="bg-zinc-900 border-zinc-800 p-8 text-center">
+                    <FiCheckCircle className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
+                    <p className="text-zinc-400">No photographers waiting for approval</p>
+                  </Card>
+                ) : (
+                  <div className="grid gap-4">
+                    {pendingPhotographers.map((photographer) => (
+                      <Card key={photographer.user_id} className="bg-zinc-900 border-zinc-800 p-6">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            {photographer.picture ? (
+                              <img
+                                src={photographer.picture}
+                                alt={photographer.name}
+                                className="w-12 h-12 rounded-full border border-zinc-700"
+                              />
+                            ) : (
+                              <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center">
+                                <FiUsers className="w-6 h-6 text-zinc-500" />
+                              </div>
+                            )}
+                            <div>
+                              <h3 className="font-semibold text-white">{photographer.name}</h3>
+                              <p className="text-sm text-zinc-400">{photographer.email}</p>
+                              <p className="text-xs text-zinc-500">
+                                Signed up: {photographer.created_at ? new Date(photographer.created_at).toLocaleDateString() : 'N/A'}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex gap-3">
+                            <Button
+                              onClick={() => handleUpdatePhotographerStatus(photographer.user_id, 'active')}
+                              className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                            >
+                              <FiCheck className="mr-2" /> Approve
+                            </Button>
+                            <Button
+                              variant="outline"
+                              onClick={() => handleDeletePhotographer(photographer.user_id, photographer.name)}
+                              className="border-red-500/50 text-red-400 hover:bg-red-500/20"
+                            >
+                              <FiX className="mr-2" /> Reject
+                            </Button>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Pre-registered Emails (awaiting signup) */}
+              <div>
+                <h2 className="text-xl font-semibold text-white mb-4">
+                  Registered Emails (Awaiting Signup) ({registeredEmails.length})
+                </h2>
+
+                {registeredEmails.length === 0 ? (
+                  <Card className="bg-zinc-900 border-zinc-800 p-8 text-center">
+                    <p className="text-zinc-400">No pending email registrations</p>
+                    <Button
+                      onClick={() => setActiveTab('register')}
+                      className="mt-4 bg-white text-black hover:bg-zinc-200"
+                    >
+                      <FiUserPlus className="mr-2" /> Register a Photographer
+                    </Button>
+                  </Card>
+                ) : (
+                  <div className="grid gap-3">
+                    {registeredEmails.map((reg) => (
+                      <Card key={reg.registration_id} className="bg-zinc-900 border-zinc-800 p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium text-white">{reg.email}</p>
+                            {reg.name && <p className="text-sm text-zinc-400">{reg.name}</p>}
+                            <p className="text-xs text-zinc-500">
+                              Registered on {new Date(reg.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleRemoveRegistration(reg.email)}
+                            className="border-red-500/50 text-red-400 hover:bg-red-500/20"
+                          >
+                            <FiTrash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </motion.div>
