@@ -618,36 +618,62 @@ const Dashboard = ({ user: initialUser }) => {
 
             {/* Sections (for main-gallery) */}
             {activeFolder === 'main-gallery' && (
-              <div className="mb-6">
-                <div className="flex items-center gap-4 mb-4">
+              <div className="mb-6 bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-white">Gallery Sections</h3>
-                  <div className="flex gap-2">
-                    <Input
-                      value={newSectionName}
-                      onChange={(e) => setNewSectionName(e.target.value)}
-                      placeholder="New section name"
-                      className="bg-gray-800 border-gray-700 text-white w-48"
-                    />
-                    <Button
-                      onClick={handleCreateSection}
-                      size="sm"
-                      className="bg-gray-700 hover:bg-gray-600"
-                    >
-                      <FiPlus className="mr-1" /> Add
-                    </Button>
-                  </div>
+                  <span className="text-sm text-gray-400">{sections.length} section(s)</span>
                 </div>
-                <div className="flex gap-2 flex-wrap">
-                  {sections.map((section) => (
+                
+                {/* Create Section Form */}
+                <div className="flex gap-2 mb-4">
+                  <Input
+                    value={newSectionName}
+                    onChange={(e) => setNewSectionName(e.target.value)}
+                    placeholder="Enter section name (e.g., ceremony, reception)"
+                    className="bg-gray-700 border-gray-600 text-white flex-1"
+                    disabled={creatingSections}
+                    onKeyPress={(e) => e.key === 'Enter' && handleCreateSection()}
+                  />
+                  <Button
+                    onClick={handleCreateSection}
+                    disabled={creatingSections || !newSectionName.trim()}
+                    className="bg-green-600 hover:bg-green-500 text-white min-w-[120px]"
+                  >
+                    {creatingSections ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        <FiPlus className="mr-1" /> Add Section
+                      </>
+                    )}
+                  </Button>
+                </div>
+                
+                {/* Sections List */}
+                {sections.length > 0 ? (
+                  <div className="flex gap-2 flex-wrap">
                     <button
-                      key={section}
-                      onClick={() => fetchEventPhotos(selectedEvent.event_id, 'main-gallery', section)}
-                      className="px-3 py-1 rounded-full bg-gray-700 text-gray-300 text-sm hover:bg-gray-600"
+                      onClick={() => fetchEventPhotos(selectedEvent.event_id, 'main-gallery')}
+                      className="px-4 py-2 rounded-lg bg-gray-600 text-white text-sm hover:bg-gray-500 font-medium"
                     >
-                      {section}
+                      📁 All Photos
                     </button>
-                  ))}
-                </div>
+                    {sections.map((section) => (
+                      <button
+                        key={section}
+                        onClick={() => fetchEventPhotos(selectedEvent.event_id, 'main-gallery', section)}
+                        className="px-4 py-2 rounded-lg bg-gray-700 text-gray-300 text-sm hover:bg-gray-600 capitalize"
+                      >
+                        📂 {section.replace(/-/g, ' ')}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm">No sections created yet. Add a section to organize your gallery photos.</p>
+                )}
               </div>
             )}
 
