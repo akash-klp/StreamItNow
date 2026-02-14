@@ -598,84 +598,108 @@ const Dashboard = ({ user: initialUser }) => {
               </Card>
             </div>
 
-            {/* Folder Tabs */}
-            <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-              {['cover-photos', 'wall-section', 'main-gallery'].map((folder) => (
-                <button
-                  key={folder}
-                  onClick={() => setActiveFolder(folder)}
-                  className={`px-4 py-2 rounded-lg whitespace-nowrap transition-colors ${
-                    activeFolder === folder
-                      ? 'bg-gray-600 text-white'
-                      : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                  }`}
-                >
-                  <FiFolder className="inline mr-2" />
-                  {folder.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                </button>
-              ))}
+            {/* Folder Tabs - Default Folders */}
+            <div className="mb-4">
+              <p className="text-sm text-gray-400 mb-2">Default Folders</p>
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {['cover-photos', 'wall-section', 'main-gallery'].map((folder) => (
+                  <button
+                    key={folder}
+                    onClick={() => setActiveFolder(folder)}
+                    className={`px-4 py-2 rounded-lg whitespace-nowrap transition-colors ${
+                      activeFolder === folder
+                        ? 'bg-gray-600 text-white'
+                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                    }`}
+                  >
+                    <FiFolder className="inline mr-2" />
+                    {folder.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Sections (for main-gallery) */}
-            {activeFolder === 'main-gallery' && (
-              <div className="mb-6 bg-gray-800 rounded-xl p-6 border border-gray-700">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-white">Gallery Sections</h3>
-                  <span className="text-sm text-gray-400">{sections.length} section(s)</span>
+            {/* Custom Sections - Separate Folders */}
+            <div className="mb-6 bg-gray-800 rounded-xl p-6 border border-gray-700">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Custom Sections</h3>
+                  <p className="text-sm text-gray-400">Create custom folders for your event photos</p>
                 </div>
-                
-                {/* Create Section Form */}
-                <div className="flex gap-2 mb-4">
-                  <Input
-                    value={newSectionName}
-                    onChange={(e) => setNewSectionName(e.target.value)}
-                    placeholder="Enter section name (e.g., ceremony, reception)"
-                    className="bg-gray-700 border-gray-600 text-white flex-1"
-                    disabled={creatingSections}
-                    onKeyPress={(e) => e.key === 'Enter' && handleCreateSection()}
-                  />
-                  <Button
-                    onClick={handleCreateSection}
-                    disabled={creatingSections || !newSectionName.trim()}
-                    className="bg-green-600 hover:bg-green-500 text-white min-w-[120px]"
-                  >
-                    {creatingSections ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Creating...
-                      </>
-                    ) : (
-                      <>
-                        <FiPlus className="mr-1" /> Add Section
-                      </>
-                    )}
-                  </Button>
-                </div>
-                
-                {/* Sections List */}
-                {sections.length > 0 ? (
-                  <div className="flex gap-2 flex-wrap">
-                    <button
-                      onClick={() => fetchEventPhotos(selectedEvent.event_id, 'main-gallery')}
-                      className="px-4 py-2 rounded-lg bg-gray-600 text-white text-sm hover:bg-gray-500 font-medium"
-                    >
-                      📁 All Photos
-                    </button>
-                    {sections.map((section) => (
-                      <button
-                        key={section}
-                        onClick={() => fetchEventPhotos(selectedEvent.event_id, 'main-gallery', section)}
-                        className="px-4 py-2 rounded-lg bg-gray-700 text-gray-300 text-sm hover:bg-gray-600 capitalize"
-                      >
-                        📂 {section.replace(/-/g, ' ')}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-sm">No sections created yet. Add a section to organize your gallery photos.</p>
-                )}
+                <span className="text-sm text-gray-400 bg-gray-700 px-3 py-1 rounded-full">{sections.length} section(s)</span>
               </div>
-            )}
+              
+              {/* Create Section Form */}
+              <div className="flex gap-2 mb-4">
+                <Input
+                  value={newSectionName}
+                  onChange={(e) => setNewSectionName(e.target.value)}
+                  placeholder="Enter section name (e.g., ceremony, reception, sangeet)"
+                  className="bg-gray-700 border-gray-600 text-white flex-1"
+                  disabled={creatingSections}
+                  onKeyPress={(e) => e.key === 'Enter' && handleCreateSection()}
+                />
+                <Button
+                  onClick={handleCreateSection}
+                  disabled={creatingSections || !newSectionName.trim()}
+                  className="bg-green-600 hover:bg-green-500 text-white min-w-[140px]"
+                >
+                  {creatingSections ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <FiPlus className="mr-1" /> Create Folder
+                    </>
+                  )}
+                </Button>
+              </div>
+              
+              {/* Custom Sections List */}
+              {sections.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {sections.map((section) => (
+                    <div
+                      key={section}
+                      className={`relative group rounded-lg overflow-hidden border transition-all cursor-pointer ${
+                        activeFolder === section 
+                          ? 'bg-gray-600 border-gray-500' 
+                          : 'bg-gray-700/50 border-gray-700 hover:bg-gray-700 hover:border-gray-600'
+                      }`}
+                    >
+                      <button
+                        onClick={() => setActiveFolder(section)}
+                        className="w-full p-4 text-left"
+                      >
+                        <FiFolder className={`w-8 h-8 mb-2 ${activeFolder === section ? 'text-white' : 'text-gray-400'}`} />
+                        <p className="font-medium text-white capitalize truncate">{section.replace(/-/g, ' ')}</p>
+                        <p className="text-xs text-gray-400">Custom folder</p>
+                      </button>
+                      
+                      {/* Delete Button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteSection(section);
+                        }}
+                        className="absolute top-2 right-2 p-1.5 rounded-full bg-red-500/80 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                        title="Delete folder"
+                      >
+                        <FiTrash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 bg-gray-700/30 rounded-lg border border-dashed border-gray-600">
+                  <FiFolder className="w-10 h-10 text-gray-500 mx-auto mb-2" />
+                  <p className="text-gray-400">No custom sections yet</p>
+                  <p className="text-sm text-gray-500">Create a section to organize photos by event moments</p>
+                </div>
+              )}
+            </div>
 
             {/* Upload Section */}
             {selectedEvent.status === 'active' && (
