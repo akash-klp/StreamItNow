@@ -31,6 +31,7 @@ const Dashboard = ({ user: initialUser }) => {
   const [previewUrls, setPreviewUrls] = useState([]);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [creatingSections, setCreatingSections] = useState(false);
   
   // New event form
   const [showNewEventForm, setShowNewEventForm] = useState(false);
