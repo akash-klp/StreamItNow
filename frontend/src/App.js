@@ -5,6 +5,7 @@ import GuestView from './pages/GuestView';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import EventGuestPage from './pages/EventGuestPage';
 import AuthCallback from './components/AuthCallback';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminProtectedRoute from './components/AdminProtectedRoute';
@@ -22,6 +23,7 @@ function AppRouter() {
       <Route path="/" element={<GuestView />} />
       <Route path="/login" element={<Login />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
+      <Route path="/event/:slug" element={<EventGuestPage />} />
       <Route
         path="/dashboard"
         element={
