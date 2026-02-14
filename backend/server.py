@@ -596,7 +596,7 @@ async def delete_event_section(
 @api_router.post("/events/{event_id}/photos/upload")
 async def upload_event_photo(
     event_id: str,
-    folder_type: str = Form(...),  # cover-photos, wall-section, main-gallery, or custom section
+    folder_type: str = Form(...),  # cover-photos, wall-section, main-gallery, or custom section name
     section_name: Optional[str] = Form(None),  # Deprecated - use folder_type directly
     file: UploadFile = File(...),
     user: dict = Depends(get_current_user_from_header)
@@ -609,8 +609,11 @@ async def upload_event_photo(
     if user.get("role") != "admin" and event["photographer_id"] != user["user_id"]:
         raise HTTPException(status_code=403, detail="Access denied")
     
-    # Validate folder type
-    valid_folders = ["cover-photos", "wall-section", "main-gallery"]
+    # Get list of valid folders (default + custom sections)
+    default_folders = ["cover-photos", "wall-section", "main-gallery"]
+    custom_sections = event.get("sections", [])
+    valid_folders = default_folders + custom_sections
+    
     if folder_type not in valid_folders:
         raise HTTPException(status_code=400, detail=f"Invalid folder type. Must be one of: {valid_folders}")
     
@@ -627,7 +630,7 @@ async def upload_event_photo(
     if len(content) > max_size:
         raise HTTPException(status_code=413, detail="File too large. Max 50MB")
     
-    # Check photo limits
+    # Check photo limits for default folders only
     try:
         counts = await asyncio.to_thread(
             s3_service.get_event_photo_counts,
