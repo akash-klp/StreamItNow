@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Multi-tenant admin system - Create admin page with photographer management. Three user roles: Admin (akashklp07@gmail.com), Photographers (need admin registration), Guests. Admin can manage photographers, approve events."
+user_problem_statement: "Multi-tenant admin system with S3 integration for wedding photography app. Three user roles: Admin, Photographers, Guests. S3 structure: photographers/{id}/events/{id}/cover-photos, wall-section, main-gallery/sections."
 
 backend:
   - task: "Admin stats endpoint"
@@ -120,80 +120,65 @@ backend:
         - agent: "testing"
         - comment: "✅ PASSED - Admin stats endpoint working correctly. Returns all required fields (total_photographers, active_photographers, pending_photographers, inactive_photographers, total_photos, total_events, active_events, pending_events). Properly requires admin authentication (401 without auth, 403 for non-admin users)."
 
-  - task: "Admin photographers list endpoint"
+  - task: "S3 Service Integration"
     implemented: true
-    working: true
-    file: "/app/backend/server.py"
+    working: "NA"
+    file: "/app/backend/s3_service.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
         - working: "NA"
         - agent: "main"
-        - comment: "Implemented GET /api/admin/photographers - lists all photographers with photo/event counts"
-        - working: true
-        - agent: "testing"
-        - comment: "✅ PASSED - Admin photographers list endpoint working correctly. Returns photographers with all required fields (user_id, email, name, role, status, photo_count, event_count). Properly requires admin authentication."
+        - comment: "S3 service with upload, delete, list, folder creation, photo counts, presigned URLs"
 
-  - task: "Register photographer endpoint"
+  - task: "Event creation with S3 folders and QR code"
     implemented: true
-    working: true
+    working: "NA"
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
         - working: "NA"
         - agent: "main"
-        - comment: "Implemented POST /api/admin/photographers/register - pre-registers photographer email"
-        - working: true
-        - agent: "testing"
-        - comment: "✅ PASSED - Register photographer endpoint working correctly. Successfully registers new photographer emails and returns registration_id. Properly handles duplicate registrations with 400 error. Requires admin authentication."
+        - comment: "POST /api/events creates event with unique slug, QR code, and S3 folder structure"
 
-  - task: "Update photographer status endpoint"
+  - task: "S3 Photo upload endpoints"
     implemented: true
-    working: true
+    working: "NA"
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
         - working: "NA"
         - agent: "main"
-        - comment: "Implemented PUT /api/admin/photographers/{user_id}/status - activate/deactivate photographers"
-        - working: true
-        - agent: "testing"
-        - comment: "✅ PASSED - Update photographer status endpoint working correctly. Successfully updates photographer status (active/pending/inactive). Returns success message. Requires admin authentication."
+        - comment: "POST /api/events/{id}/photos/upload - uploads to cover-photos, wall-section, main-gallery"
 
-  - task: "Event management endpoints"
+  - task: "Public event guest page endpoint"
     implemented: true
-    working: true
+    working: "NA"
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
         - working: "NA"
         - agent: "main"
-        - comment: "Implemented CRUD for events with approval workflow"
-        - working: true
-        - agent: "testing"
-        - comment: "✅ PASSED - Event management endpoints working correctly. Photographers can create events (status=pending), admin can create events (status=active). Admin can list all events, list pending events, and approve/reject events. Proper role-based access control implemented. Event approval workflow functioning as expected."
+        - comment: "GET /api/public/event/{slug} - returns event data for guest view"
 
-  - task: "Auth session with role-based access"
+  - task: "Photo download with presigned URL"
     implemented: true
-    working: true
+    working: "NA"
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
         - working: "NA"
         - agent: "main"
-        - comment: "Updated auth to check admin email and registered photographers list"
-        - working: true
-        - agent: "testing"
-        - comment: "✅ PASSED - Role-based authentication working correctly. Admin user (akashklp07@gmail.com) has admin role and can access all admin endpoints. Photographers have photographer role and are properly restricted from admin endpoints (403 Forbidden). Authentication properly validates session tokens and returns 401 for invalid/missing tokens."
+        - comment: "GET /api/public/event/{slug}/download/{photo_id} - generates presigned download URL"
 
 frontend:
   - task: "Admin Dashboard page"
