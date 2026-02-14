@@ -307,15 +307,18 @@ async def create_event(
     event_slug = generate_unique_slug()
     status = "active" if user.get("role") == "admin" else "pending"
     
-    # Generate event URL and QR code
-    # Note: Replace with your actual domain in production
+    # Generate event URL with full domain for QR code
+    # Get the frontend URL from environment or use default
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://s3-app-bridge.preview.emergentagent.com')
+    full_event_url = f"{frontend_url}/event/{event_slug}"
     event_url = f"/event/{event_slug}"
-    qr_code = generate_qr_code_base64(event_url)
+    qr_code = generate_qr_code_base64(full_event_url)
     
     event_doc = {
         "event_id": event_id,
         "event_slug": event_slug,
         "event_url": event_url,
+        "full_event_url": full_event_url,
         "qr_code": qr_code,
         "event_name": request.event_name,
         "bride_name": request.bride_name,
