@@ -156,6 +156,31 @@ const Dashboard = ({ user: initialUser }) => {
     }
   };
 
+  const handleDeleteSection = async (sectionName) => {
+    if (!window.confirm(`Are you sure you want to delete the "${sectionName}" folder? All photos in this folder will be permanently deleted.`)) {
+      return;
+    }
+
+    try {
+      await axios.delete(
+        `${BACKEND_URL}/api/events/${selectedEvent.event_id}/sections/${sectionName}`,
+        getAuthHeaders()
+      );
+      toast.success(`✅ Section "${sectionName}" deleted successfully!`);
+      
+      // If we were viewing the deleted section, switch to cover-photos
+      if (activeFolder === sectionName) {
+        setActiveFolder('cover-photos');
+      }
+      
+      // Refresh sections list
+      await fetchSections(selectedEvent.event_id);
+      await fetchPhotoCounts(selectedEvent.event_id);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to delete section');
+    }
+  };
+
   const handleFileSelect = (e) => {
     const files = Array.from(e.target.files || []);
     const validFiles = files.filter(file => {
