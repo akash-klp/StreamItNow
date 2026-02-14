@@ -984,8 +984,11 @@ async def create_session(session_id: str = Header(..., alias="X-Session-ID")):
             # Determine user role
             is_admin = email == ADMIN_EMAIL.lower()
             
-            # Check if user is registered photographer (unless admin)
-            if not is_admin:
+            # Check if user already exists in the system
+            existing_user = await db.users.find_one({"email": email}, {"_id": 0})
+            
+            # Check if user is registered photographer (unless admin or already exists)
+            if not is_admin and not existing_user:
                 is_registered = await db.registered_photographers.find_one({"email": email})
                 if not is_registered:
                     raise HTTPException(
@@ -994,7 +997,6 @@ async def create_session(session_id: str = Header(..., alias="X-Session-ID")):
                     )
             
             user_id = f"user_{uuid.uuid4().hex[:12]}"
-            existing_user = await db.users.find_one({"email": email}, {"_id": 0})
             
             if existing_user:
                 user_id = existing_user["user_id"]
