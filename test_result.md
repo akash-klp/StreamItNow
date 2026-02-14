@@ -180,7 +180,7 @@ backend:
         - agent: "testing"
         - comment: "✅ PASSED - Public event guest endpoint working correctly. GET /api/public/event/{slug} returns all required fields: event_name, photographer_name, cover_photos, wall_photos, main_gallery, sections. Properly handles invalid slugs (404), requires active event status. No authentication required as expected for public access. Response structure matches requirements."
 
-  - task: "Photo download with presigned URL"
+  - task: "Section creation and listing endpoints"
     implemented: true
     working: true
     file: "/app/backend/server.py"
@@ -188,12 +188,21 @@ backend:
     priority: "high"
     needs_retesting: false
     status_history:
-        - working: "NA"
-        - agent: "main"
-        - comment: "GET /api/public/event/{slug}/download/{photo_id} - generates presigned download URL"
         - working: true
         - agent: "testing"
-        - comment: "✅ PASSED - Photo download endpoint working correctly. GET /api/public/event/{slug}/download/{photo_id} properly validates event slug and photo ID, returns correct structure with download_url and filename fields. Handles invalid photo IDs (404) and invalid event slugs (404). Presigned URL generation logic implemented correctly."
+        - comment: "✅ PASSED - Section management endpoints working correctly. POST /api/events/{id}/sections properly validates authentication, creates sections in database, and attempts S3 folder creation (fails due to AWS permissions, not code). GET /api/events/{id}/sections returns correct structure with sections array. Endpoint validation and response formats working correctly."
+
+  - task: "Photo listing and counts endpoints"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+        - agent: "testing"
+        - comment: "✅ PASSED - Photo listing endpoints working correctly. GET /api/events/{id}/photos returns proper structure with photos array and count field. GET /api/events/{id}/photo-counts returns correct structure with cover_photos, wall_section, main_gallery counts. Endpoints handle authentication properly and return appropriate responses even when S3 operations fail due to permissions."
 
 frontend:
   - task: "Admin Dashboard page"
