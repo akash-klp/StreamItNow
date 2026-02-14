@@ -496,11 +496,11 @@ async def create_event_section(
     
     section_name = request.section_name.lower().replace(' ', '-')
     
-    # Create S3 folder for section
+    # Create S3 folder for section - use the event's photographer_id
     try:
         success = await asyncio.to_thread(
             s3_service.create_section_folder,
-            user["user_id"],
+            event["photographer_id"],
             event_id,
             section_name
         )
