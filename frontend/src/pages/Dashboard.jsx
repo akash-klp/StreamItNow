@@ -136,6 +136,7 @@ const Dashboard = ({ user: initialUser }) => {
     
     const sectionToCreate = newSectionName.trim();
     setNewSectionName(''); // Clear immediately for better UX
+    setCreatingSections(true);
     
     try {
       const response = await axios.post(
@@ -150,6 +151,8 @@ const Dashboard = ({ user: initialUser }) => {
       await fetchSections(selectedEvent.event_id);
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to create section');
+    } finally {
+      setCreatingSections(false);
     }
   };
 
