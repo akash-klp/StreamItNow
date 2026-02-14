@@ -1160,6 +1160,42 @@ class WeddingPhotographyAPITester:
         self.test_list_photos_without_auth()
         self.test_delete_photo_without_auth()
 
+        print("\n🗂️ Testing S3 Integration & Photo Upload System")
+        print("-" * 40)
+        
+        # Test S3 connection
+        self.test_s3_connection_test_unauthenticated()
+        self.test_s3_connection_test_with_admin_auth()
+        self.test_s3_connection_test_with_photographer_auth()
+        
+        # Test event creation with S3 features
+        self.test_event_creation_with_s3_folders_and_qr_code()
+        
+        # Test section management
+        self.test_create_event_section()
+        self.test_list_event_sections()
+        
+        # Test photo uploads to different folders
+        self.test_photo_upload_to_cover_photos()
+        self.test_photo_upload_to_wall_section()
+        self.test_photo_upload_to_main_gallery_with_section()
+        self.test_photo_upload_invalid_folder_type()
+        
+        # Test photo listing and counts
+        self.test_list_event_photos()
+        self.test_get_event_photo_counts()
+        
+        # Test public guest endpoints
+        self.test_public_event_endpoint_with_valid_slug()
+        self.test_public_event_endpoint_with_invalid_slug()
+        
+        # Test photo download
+        self.test_photo_download_with_valid_photo_id()
+        self.test_photo_download_with_invalid_photo_id()
+        
+        # Test photo upload without auth
+        self.test_photo_upload_without_auth()
+
         # Print summary
         print("=" * 60)
         print(f"📊 Test Results: {self.tests_passed}/{self.tests_run} passed")
