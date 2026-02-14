@@ -525,7 +525,7 @@ async def list_event_sections(
     event_id: str,
     user: dict = Depends(get_current_user_from_header)
 ):
-    """List all sections in an event's main gallery"""
+    """List all custom sections in an event"""
     event = await db.events.find_one({"event_id": event_id}, {"_id": 0})
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
@@ -533,16 +533,9 @@ async def list_event_sections(
     if user.get("role") != "admin" and event["photographer_id"] != user["user_id"]:
         raise HTTPException(status_code=403, detail="Access denied")
     
-    # Get sections from S3
-    try:
-        sections = await asyncio.to_thread(
-            s3_service.list_sections,
-            event["photographer_id"],
-            event_id
-        )
-        return {"sections": sections}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list sections: {str(e)}")
+    # Get sections from MongoDB event document (more reliable than S3 listing)
+    sections = event.get("sections", [])
+    return {"sections": sections}
 
 @api_router.delete("/events/{event_id}/sections/{section_name}")
 async def delete_event_section(
