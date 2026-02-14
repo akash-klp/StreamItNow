@@ -431,12 +431,16 @@ class S3Service:
     def test_connection(self) -> bool:
         """Test S3 connection"""
         try:
-            self.s3_client.head_bucket(Bucket=self.bucket_name)
+            # Use list_objects_v2 instead of head_bucket for better compatibility
+            self.s3_client.list_objects_v2(Bucket=self.bucket_name, MaxKeys=1)
             logger.info(f"Successfully connected to S3 bucket: {self.bucket_name}")
             return True
         except ClientError as e:
             error_code = e.response['Error']['Code']
             logger.error(f"S3 connection failed: {error_code}")
+            return False
+        except Exception as e:
+            logger.error(f"S3 connection error: {e}")
             return False
 
 
