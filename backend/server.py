@@ -309,7 +309,7 @@ async def create_event(
     
     # Generate event URL with full domain for QR code
     # Get the frontend URL from environment or use default
-    frontend_url = os.environ.get('FRONTEND_URL', 'https://s3-app-bridge.preview.emergentagent.com')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://qa-helper-3.preview.emergentagent.com')
     full_event_url = f"{frontend_url}/event/{event_slug}"
     event_url = f"/event/{event_slug}"
     qr_code = generate_qr_code_base64(full_event_url)

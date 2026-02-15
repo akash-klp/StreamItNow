@@ -7,7 +7,7 @@ import uuid
 import pymongo
 
 class WeddingPhotographyAPITester:
-    def __init__(self, base_url="https://s3-app-bridge.preview.emergentagent.com"):
+    def __init__(self, base_url="https://qa-helper-3.preview.emergentagent.com"):
         self.base_url = base_url
         self.admin_token = None
         self.photographer_token = None
